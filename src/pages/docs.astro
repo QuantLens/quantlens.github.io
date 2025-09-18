@@ -1,9 +1,13 @@
----
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 <BaseLayout title="Docs — QuantLens" description="Setup, schema, and collector recipes.">
   <section class="container mx-auto px-6 py-16 max-w-3xl">
     <h1 class="text-3xl font-semibold mb-4">Documentation</h1>
-    <p class="text-slate-300">Coming soon: Setup guide, JSON schema v1, LLM recipes, and a minimal collector.</p>
+    <ul class="list-disc list-inside text-slate-300 space-y-2">
+      <li><a class="underline" href="/docs/setup">Setup</a></li>
+      <li><a class="underline" href="/docs/json-schema-v1">JSON Schema v1</a></li>
+      <li><a class="underline" href="/docs/collector-quickstart">Collector Quickstart</a></li>
+      <li><a class="underline" href="/docs/recipes">Recipes</a></li>
+    </ul>
   </section>
 </BaseLayout>

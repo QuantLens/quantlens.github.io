@@ -1,0 +1,32 @@
+---
+layout: ../../layouts/BaseLayout.astro
+title: JSON Schema v1 — QuantLens
+---
+
+## JSON Schema v1
+
+A compact, LLM-friendly schema:
+
+```json
+{
+  "symbol": "<string>",
+  "time": "<ISO8601>",
+  "exchange": "<string>",
+  "horizons": {
+    "m5": {"trend": "<up|down|range>", "rsi": <number>, "signal": "<string>"},
+    "h1": {"trend": "…"},
+    "d1": {"trend": "…"}
+  },
+  "macro": {"risk_on": <bool>, "usd_liquidity": "<string>"},
+  "vpLite": {"value_area": [<low>, <high>], "poc": <number>},
+  "signals": [{"type": "<string>", "timeframe": "<string>"}],
+  "risk": {"sl_pct": <number>, "tp_pct": <number>},
+  "human": {"note": "<string>"},
+  "audit": {"version": "v1", "exporter": "LLM_JSON_Export_v6.pine"}
+}
+```
+
+Notes:
+- Keep blocks small and consistent for better token usage.
+- Use horizons for alignment logic in your LLM or agents.
+- Enrich "human" only when it adds clarity.

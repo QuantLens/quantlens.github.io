@@ -1,0 +1,22 @@
+---
+layout: ../../layouts/BaseLayout.astro
+title: Setup — QuantLens
+---
+
+## Setup
+
+Follow these steps to export TradingView alerts as AI-ready JSON.
+
+1. Add `LLM_JSON_Export_v6.pine` to your chart in TradingView.
+2. Create an alert using your strategy/indicator; set the webhook URL to your collector endpoint.
+3. Use our collector example to receive and store the JSON.
+4. Feed the JSON into your LLM or analytics pipeline.
+
+### Requirements
+- TradingView account with alerts
+- A reachable webhook endpoint (Node/Express or Python/FastAPI)
+- Optional: database or object storage for archiving
+
+### Next
+- See the [JSON Schema v1](/docs/json-schema-v1) for available fields.
+- Try the [Collector Quickstart](/docs/collector-quickstart).

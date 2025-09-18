@@ -1,0 +1,29 @@
+---
+layout: ../../layouts/BaseLayout.astro
+title: Collector Quickstart — QuantLens
+---
+
+## Collector Quickstart
+
+Minimal Node/Express example to receive TradingView alerts.
+
+```js
+import express from 'express';
+
+const app = express();
+app.use(express.json());
+
+app.post('/webhook', (req, res) => {
+  const payload = req.body; // JSON from TradingView
+  console.log('Received:', payload.symbol, payload.time);
+  // TODO: store in DB or object storage
+  res.sendStatus(200);
+});
+
+app.listen(3000, () => console.log('Collector listening on :3000'));
+```
+
+Tips:
+- Secure the endpoint with a secret token in headers.
+- Validate payload shape before processing.
+- Consider retries/backoff for downstream failures.
