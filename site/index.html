@@ -3,124 +3,186 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>QuantLens — Multi‑Horizon Market Export Engine</title>
-  <meta name="description" content="Turn TradingView alerts into LLM‑ready technical analysis. Compact JSON, multi‑horizon features, VP‑Lite, signals, and risk in one payload." />
+  <title>QuantLens — Turn TradingView Charts Into Smart Trading Insights</title>
+  <meta name="description" content="Transform your TradingView analysis into AI-ready data. Get instant market insights, technical analysis, and trading signals - all automated." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css" />
   <link rel="icon" href="./assets/ql-logo.svg" type="image/svg+xml">
-  <!-- Optional: set base path if hosting as project site (QuantLens.github.io/YOUR-REPO/) -->
-  <!-- <base href="/YOUR-REPO/"> -->
 </head>
 <body>
   <header class="nav">
-    <div class="container nav__row">
-      <div class="brand">
-        <img src="./assets/ql-logo.svg" alt="QuantLens" class="brand__logo" />
-        <span class="brand__name">QuantLens</span>
+    <div class="container">
+      <div class="nav__row">
+        <a href="#" class="brand">
+          <img src="./assets/ql-logo.svg" alt="QuantLens" class="brand__logo" />
+          <span class="brand__name">QuantLens</span>
+        </a>
+        <nav class="menu">
+          <a href="#how-it-works">How it works</a>
+          <a href="#features">Features</a>
+          <a href="./contact.html" class="btn btn--primary">Get Started</a>
+        </nav>
       </div>
-      <nav class="menu">
-        <a href="#features">Features</a>
-        <a href="#how">How it works</a>
-        <a href="#llm">LLM value</a>
-        <a href="#llm-output">Sample output</a>
-        <a href="#automation">Automation</a>
-        <a href="#faq">FAQ</a>
-        <a href="#refunds">Refunds</a>
-        <a href="./templates.html">Templates</a>
-        <a href="#prompt">Paste & prompt</a>
-        <a class="btn btn--sm" href="#get-started">Get started</a>
-      </nav>
     </div>
   </header>
 
   <main>
-    <section class="hero" id="top">
-      <div class="container hero__grid">
-        <div class="hero__copy">
-          <h1>QuantLens™: Unleash a 360° Market Vision to Dominate Trading</h1>
-          <p>Scan your watchlist with TradingView workflows, unlock LLM‑powered TA, and master stocks, crypto, and forex with multi‑horizon context, VP‑Lite, signals, risk, and pair insights.</p>
-          <div class="hero__cta">
-            <a class="btn btn--primary" href="./product.html">See the product</a>
-            <a class="btn" href="./how.html">How it works</a>
-            <a class="btn" href="./contact.html">Join waitlist</a>
-          </div>
-          <div class="hero__links">
-            <a href="../README.md">README</a>
-            <span>·</span>
-            <a href="../SETTINGS.md">Settings</a>
-            <span>·</span>
-            <a href="../MARKETING_LLMS.md">What LLMs Extract</a>
-          </div>
-        </div>
-        <div class="hero__panel">
-          <div class="glass card code">
-            <div class="code__bar">
-              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-              <span class="code__title">payload.json</span>
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero__grid">
+          <div class="hero__copy">
+            <h1>Turn TradingView Charts Into Smart Trading Insights</h1>
+            <p>Stop manually analyzing charts. QuantLens automatically extracts key market data from TradingView and delivers AI-ready insights for smarter trading decisions.</p>
+            <div class="hero__cta">
+              <a class="btn btn--primary btn--lg" href="./contact.html">Start Free Trial</a>
+              <a class="btn btn--lg" href="#how-it-works">See How It Works</a>
             </div>
-            <pre><code id="sample-json" class="scroll">
-{
-  "schema":"v1",
-  "uid":"OPUSDT.P-5-1758199200",
-  "s":"OPUSDT.P",
-  "tf":"5",
-  "t":1758199200,
-  "horizons":{ "short":{ "hdr":{"c":0.8161,"chN":-0.002,"rngp":0.027},
-    "feat":{"sma":0.814,"ema":0.813,"rsi":52.26,"atrp":0.003,"bbp":0.84},
-    "levels":{"fib":[0.805,0.827]} },
-    "medium":{"hdr":{"chN":0.045}},
-    "long":{"hdr":{"chN":-0.509}} },
-  "vp":{"poc":0.819,"val":0.809,"vah":0.819,"in_va":1,"regime":"discovery"},
-  "risk":{"atrp":0.003,"dd14":0.004},
-  "sig":{"long":{"trigger":0.828,"stop":0.825,"tp1":0.830}}
-}
-            </code></pre>
+            <div class="hero__links">
+              <span class="text-muted">✓ Works with any TradingView chart</span>
+              <span class="text-muted">•</span>
+              <span class="text-muted">✓ AI-ready output</span>
+              <span class="text-muted">•</span>
+              <span class="text-muted">✓ Zero coding required</span>
+            </div>
+          </div>
+          <div class="hero__panel">
+            <div class="code">
+              <div class="code__bar">
+                <div class="code__dots">
+                  <div class="code__dot"></div>
+                  <div class="code__dot"></div>
+                  <div class="code__dot"></div>
+                </div>
+                <div class="code__title">Live Market Data → AI Analysis</div>
+              </div>
+              <div class="code__content">
+                <div class="text-sm text-muted mb-4">Real-time output from your TradingView chart:</div>
+                <pre class="text-sm">{
+  "symbol": "AAPL",
+  "trend": "bullish",
+  "price": 173.25,
+  "support": 170.50,
+  "resistance": 175.80,
+  "signal": "buy_breakout",
+  "confidence": 0.85,
+  "risk_level": "medium"
+}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="section--gray">
+      <div class="container">
+        <div class="text-center mb-8">
+          <h2>How It Works</h2>
+          <p class="text-xl text-muted">Three simple steps to automate your trading analysis</p>
+        </div>
+        
+        <div class="cards">
+          <div class="card text-center">
+            <div class="step-number step-number--blue">1</div>
+            <h3>Install QuantLens Script</h3>
+            <p>Add our Pine Script indicator to any TradingView chart. Works with stocks, crypto, forex, and more.</p>
+          </div>
+          
+          <div class="card text-center">
+            <div class="step-number step-number--purple">2</div>
+            <h3>Set Up Alerts</h3>
+            <p>Configure TradingView alerts to automatically capture market data and technical indicators in real-time.</p>
+          </div>
+          
+          <div class="card text-center">
+            <div class="step-number step-number--green">3</div>
+            <h3>Get AI Insights</h3>
+            <p>Receive structured data ready for AI analysis, automated trading systems, or manual review.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="features" id="features">
+    <!-- Features Section -->
+    <section id="features">
       <div class="container">
-        <h2>Sleek, signal‑dense, and LLM‑friendly</h2>
-        <div class="grid cards">
-          <article class="card">
-            <h3>Multi‑horizon context</h3>
-            <p>Short, medium, and long horizons in one snapshot. Aggregates, features, and compact levels ready for models.</p>
-          </article>
-          <article class="card">
-            <h3>VP‑Lite built in</h3>
-            <p>POC/VAL/VAH, acceptance, regime, and drift. Enough volume structure for robust prompts — without bloat.</p>
-          </article>
-          <article class="card">
-            <h3>Signals & risk blocks</h3>
-            <p>Ready‑made triggers, invalidations, stops, targets, and RR hints. Snap to action with minimal prompt tokens.</p>
-          </article>
-          <article class="card">
-            <h3>Compact JSON</h3>
-            <p>Short keys, stable ordering, precision control. Designed to minimize token cost and parsing friction.</p>
-          </article>
+        <div class="text-center mb-8">
+          <h2>Powerful Features for Smart Trading</h2>
+          <p class="text-xl text-muted">Everything you need to make data-driven trading decisions</p>
+        </div>
+        
+        <div class="cards">
+          <div class="card">
+            <h3>📊 Multi-Timeframe Analysis</h3>
+            <p>Captures short, medium, and long-term trends from your charts automatically.</p>
+          </div>
+          
+          <div class="card">
+            <h3>🤖 AI-Ready Output</h3>
+            <p>Clean JSON format perfect for feeding into ChatGPT, Claude, or custom AI models.</p>
+          </div>
+          
+          <div class="card">
+            <h3>⚡ Real-Time Alerts</h3>
+            <p>Get instant notifications when market conditions change or signals trigger.</p>
+          </div>
+          
+          <div class="card">
+            <h3>📈 Technical Indicators</h3>
+            <p>RSI, moving averages, Bollinger Bands, volume analysis, and more - all automated.</p>
+          </div>
+          
+          <div class="card">
+            <h3>🎯 Support & Resistance</h3>
+            <p>Automatically identifies key price levels and breakout opportunities.</p>
+          </div>
+          
+          <div class="card">
+            <h3>💰 Risk Management</h3>
+            <p>Built-in position sizing, stop-loss suggestions, and risk assessment tools.</p>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="how" id="how">
+    <!-- CTA Section -->
+    <section class="section--gray">
       <div class="container">
-        <h2>How it works</h2>
-        <ol class="steps">
-          <li><strong>TradingView</strong> — Add the QuantLens indicator to your chart.</li>
-          <li><strong>Create an alert</strong> — Condition: the study, Event: Any alert(), Timing: once per bar close.</li>
-          <li><strong>Deliver</strong> — Webhook to your collector or copy from Alert Log.</li>
-          <li><strong>Store</strong> — Save as <code>/symbol/tf/epoch.json</code>.</li>
-          <li><strong>Analyze</strong> — Feed the JSON + prompt to your LLM. Instant TA.</li>
-        </ol>
-        <p class="muted">Tip: Scale across a watchlist with multi‑chart layouts and a single webhook endpoint that accepts all symbols.</p>
+        <div class="text-center">
+          <h2>Ready to Automate Your Trading Analysis?</h2>
+          <p class="text-xl text-muted mb-8">Join thousands of traders using QuantLens to make smarter decisions</p>
+          <div class="hero__cta hero__cta--center">
+            <a class="btn btn--primary btn--lg" href="./contact.html">Start Free Trial</a>
+            <a class="btn btn--lg" href="./templates.html">View Examples</a>
+          </div>
+        </div>
       </div>
     </section>
+  </main>
 
-    <section class="llm" id="llm">
-      <div class="container">
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__row">
+        <div class="brand">
+          <img src="./assets/ql-logo.svg" alt="QuantLens" class="brand__logo" />
+          <span class="brand__name">QuantLens</span>
+        </div>
+        <div>
+          <a href="./contact.html">Contact</a>
+          <a href="./templates.html">Examples</a>
+          <a href="../README.md">Documentation</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>
         <h2>What the LLM sees at a glance</h2>
         <div class="grid cards">
           <article class="card">
