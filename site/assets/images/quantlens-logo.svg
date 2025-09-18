@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <defs>
+    <!-- Gradient definitions for the logo -->
+    <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#40E0D0;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#1E90FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4682B4;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="centerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#B0E0E6;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#4682B4;stop-opacity:0.8" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Circuit lines - left side -->
+  <g stroke="url(#primaryGradient)" stroke-width="2" fill="none">
+    <path d="M20,80 L60,80 L80,100 L120,100" opacity="0.8"/>
+    <path d="M20,120 L40,120 L60,140 L100,140" opacity="0.6"/>
+    <path d="M20,160 L70,160 L90,180 L130,180" opacity="0.7"/>
+    <circle cx="25" cy="80" r="4" fill="url(#primaryGradient)"/>
+    <circle cx="25" cy="120" r="3" fill="url(#primaryGradient)" opacity="0.8"/>
+    <circle cx="25" cy="160" r="3" fill="url(#primaryGradient)" opacity="0.6"/>
+  </g>
+  
+  <!-- Circuit lines - right side -->
+  <g stroke="url(#primaryGradient)" stroke-width="2" fill="none">
+    <path d="M280,100 L320,100 L340,80 L380,80" opacity="0.8"/>
+    <path d="M300,140 L340,140 L360,120 L380,120" opacity="0.6"/>
+    <path d="M270,180 L310,180 L330,160 L380,160" opacity="0.7"/>
+    <circle cx="375" cy="80" r="4" fill="url(#primaryGradient)"/>
+    <circle cx="375" cy="120" r="3" fill="url(#primaryGradient)" opacity="0.8"/>
+    <circle cx="375" cy="160" r="3" fill="url(#primaryGradient)" opacity="0.6"/>
+  </g>
+  
+  <!-- Main aperture circle -->
+  <circle cx="200" cy="140" r="80" stroke="url(#primaryGradient)" stroke-width="4" fill="none" opacity="0.9"/>
+  
+  <!-- Aperture blades -->
+  <g fill="url(#centerGradient)" stroke="url(#primaryGradient)" stroke-width="1">
+    <!-- Top blade -->
+    <path d="M200,70 L185,95 L215,95 Z" opacity="0.9"/>
+    <!-- Top-right blade -->
+    <path d="M260,85 L240,105 L250,125 Z" opacity="0.8"/>
+    <!-- Bottom-right blade -->
+    <path d="M260,195 L240,175 L250,155 Z" opacity="0.8"/>
+    <!-- Bottom blade -->
+    <path d="M200,210 L215,185 L185,185 Z" opacity="0.9"/>
+    <!-- Bottom-left blade -->
+    <path d="M140,195 L160,175 L150,155 Z" opacity="0.8"/>
+    <!-- Top-left blade -->
+    <path d="M140,85 L160,105 L150,125 Z" opacity="0.8"/>
+  </g>
+  
+  <!-- Center highlight -->
+  <circle cx="200" cy="140" r="25" fill="url(#centerGradient)" opacity="0.4"/>
+  <circle cx="200" cy="140" r="15" fill="white" opacity="0.3"/>
+  
+  <!-- QuantLens text -->
+  <text x="200" y="270" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="300" fill="#9CA3AF">
+    QUANTLENS<tspan font-size="20" baseline-shift="super">™</tspan>
+  </text>
+</svg>
