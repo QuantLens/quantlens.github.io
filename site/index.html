@@ -12,7 +12,29 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="icon" href="./assets/ql-logo.svg" type="image/svg+xml">
+  <meta name="build" content="2025-09-18-1" />
+  <link rel="icon" href="./assets/ql-logo.svg?v=2025-09-18-1" type="image/svg+xml">
+  <script>
+    // Register service worker with version to ensure updates
+    (function(){
+      const VER = '2025-09-18-1';
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          const swUrl = `./sw.js?b=${VER}`;
+          navigator.serviceWorker.register(swUrl).then(reg => {
+            // Reload when a new SW takes control
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+              // Avoid reload loops
+              if (!sessionStorage.getItem('reloaded')) {
+                sessionStorage.setItem('reloaded', '1');
+                window.location.reload();
+              }
+            });
+          }).catch(console.warn);
+        });
+      }
+    })();
+  </script>
   <style>
     :root {
       --bg: #0a0e13;
@@ -277,7 +299,7 @@
   <header class="container">
     <div class="logo">
       <div class="logo-mark">
-        <img src="assets/images/quantlens-logo.svg" alt="QuantLens™ Logo">
+        <img src="assets/images/quantlens-logo.svg?v=2025-09-18-1" alt="QuantLens™ Logo">
       </div>
       <div>QuantLens</div>
     </div>
