@@ -1,0 +1,19 @@
+{
+  "symbol": "OPUSDT.P",
+  "time": "2025-09-18T00:00:00Z",
+  "exchange": "BINANCE",
+  "horizons": {
+    "m5": {"trend": "up", "rsi": 62, "signal": "pullback-long"},
+    "h1": {"trend": "up", "rsi": 58, "signal": "continuation"},
+    "d1": {"trend": "range", "rsi": 50, "signal": "neutral"}
+  },
+  "macro": {"risk_on": true, "usd_liquidity": "neutral"},
+  "vpLite": {"value_area": [0.85, 0.93], "poc": 0.90},
+  "signals": [
+    {"type": "bullish_divergence", "timeframe": "m5"},
+    {"type": "breakout_watch", "timeframe": "h1"}
+  ],
+  "risk": {"sl_pct": 0.02, "tp_pct": 0.05},
+  "human": {"note": "Watching for retest after breakout."},
+  "audit": {"version": "v1", "exporter": "LLM_JSON_Export_v6.pine"}
+}

@@ -1,38 +1,98 @@
----
 import BaseLayout from "../layouts/BaseLayout.astro";
+import LiveJsonDemo from "../components/LiveJsonDemo.astro";
 ---
 
 <BaseLayout title="QuantLens — AI-ready JSON for TradingView" description="Export rich market context from TradingView to your AI stack.">
-  <section class="relative flex items-center justify-center py-24">
+  <!-- Hero -->
+  <section class="relative py-24">
     <div class="absolute inset-0 -z-10 bg-gradient-to-b from-brand-900/40 via-surface to-surface"></div>
     <div class="container mx-auto px-6 text-center max-w-4xl">
       <img src="/site/assets/images/quantlens-logo.svg" alt="QuantLens" class="mx-auto h-16 w-auto mb-8 opacity-90" />
       <h1 class="text-4xl sm:text-6xl font-semibold leading-tight">
-        <span class="gradient-text">QuantLens</span>
+        <span class="gradient-text">Export TradingView to your AI</span>
       </h1>
       <p class="mt-6 text-lg text-slate-300">
-        Export structured, AI-ready JSON from TradingView — horizons, context, intent, signals, and more.
+        Horizons, context, signals, risk, human notes — all in one clean JSON your LLM can reason about.
       </p>
       <div class="mt-10 flex gap-4 justify-center">
         <a href="/product" class="px-5 py-3 rounded-lg bg-brand-500 hover:bg-brand-400 text-slate-900 font-medium shadow-glow">See Product</a>
-        <a href="/docs" class="px-5 py-3 rounded-lg glass">Read Docs</a>
+        <a href="/docs" class="px-5 py-3 rounded-lg glass">Get Started</a>
       </div>
       <p class="mt-6 text-sm text-slate-400">Email: <a class="underline hover:text-slate-200" href="mailto:quant.lenstm@gmail.com">quant.lenstm@gmail.com</a></p>
     </div>
   </section>
+
+  <!-- Social proof (placeholder badges) -->
+  <section class="py-10">
+    <div class="container mx-auto px-6 max-w-5xl grid sm:grid-cols-3 gap-4">
+      <div class="glass p-4 rounded-lg text-center text-slate-300">LLM-Ready Schema</div>
+      <div class="glass p-4 rounded-lg text-center text-slate-300">Own Your Pipeline</div>
+      <div class="glass p-4 rounded-lg text-center text-slate-300">Pine v6 Exporter</div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="py-16">
+    <div class="container mx-auto px-6 max-w-5xl grid md:grid-cols-3 gap-6 items-stretch">
+      <div class="glass p-6 rounded-xl">
+        <div class="text-sm text-slate-400 mb-1">Step 1</div>
+        <h3 class="text-xl font-semibold mb-2">Install Pine Exporter</h3>
+        <p class="text-slate-300">Add `LLM_JSON_Export_v6.pine` to your chart and configure alert webhook.</p>
+      </div>
+      <div class="glass p-6 rounded-xl">
+        <div class="text-sm text-slate-400 mb-1">Step 2</div>
+        <h3 class="text-xl font-semibold mb-2">Run a Collector</h3>
+        <p class="text-slate-300">Use our Node/Python examples to receive alerts and store JSON.</p>
+      </div>
+      <div class="glass p-6 rounded-xl">
+        <div class="text-sm text-slate-400 mb-1">Step 3</div>
+        <h3 class="text-xl font-semibold mb-2">Plug into your AI</h3>
+        <p class="text-slate-300">Feed clean context to your LLM, agents, or analytics pipelines.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Schema highlights -->
   <section class="py-16">
     <div class="container mx-auto px-6 max-w-5xl grid md:grid-cols-3 gap-6">
       <div class="glass p-6 rounded-xl">
-        <h3 class="text-xl font-semibold mb-2">Rich JSON Schema</h3>
-        <p class="text-slate-300">Multi-horizon frames, macro, volume profile lite, risk and signals, human context, and audit fields.</p>
+        <h3 class="text-xl font-semibold mb-2">Horizon Frames</h3>
+        <p class="text-slate-300">m5/h1/d1 with trend, RSI, and signals for multi-timeframe alignment.</p>
       </div>
       <div class="glass p-6 rounded-xl">
-        <h3 class="text-xl font-semibold mb-2">LLM Friendly</h3>
-        <p class="text-slate-300">Clean keys, stable structure, and examples for collectors so your AI can reason over markets.</p>
+        <h3 class="text-xl font-semibold mb-2">Macro & VP Lite</h3>
+        <p class="text-slate-300">Risk-on flags, USD liquidity, value area and POC — keep it lightweight.</p>
       </div>
       <div class="glass p-6 rounded-xl">
-        <h3 class="text-xl font-semibold mb-2">Own Your Pipeline</h3>
-        <p class="text-slate-300">We don’t host your data. You control the webhook and storage with our exporter guidance.</p>
+        <h3 class="text-xl font-semibold mb-2">Human Context</h3>
+        <p class="text-slate-300">Optional notes and rationale to guide LLM reasoning and actions.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live JSON Demo -->
+  <section class="py-16">
+    <div class="container mx-auto px-6 max-w-5xl">
+      <LiveJsonDemo src="/samples/opusdt.sample.json" />
+    </div>
+  </section>
+
+  <!-- Pricing preview -->
+  <section class="py-16">
+    <div class="container mx-auto px-6 max-w-5xl grid md:grid-cols-2 gap-6 items-center">
+      <div>
+        <h3 class="text-2xl font-semibold mb-3">Transparent and simple</h3>
+        <p class="text-slate-300">Exporter is free today. We’ll introduce simple paid tiers for advanced features later.</p>
+      </div>
+      <div class="glass p-6 rounded-xl">
+        <div class="text-xl font-semibold">Early Access</div>
+        <div class="text-3xl font-bold mt-2">$0</div>
+        <ul class="mt-4 text-slate-300 list-disc list-inside space-y-1">
+          <li>LLM-ready JSON schema</li>
+          <li>Pine v6 exporter</li>
+          <li>Collector examples</li>
+        </ul>
+        <a href="/docs" class="mt-6 inline-block px-5 py-3 rounded-lg bg-brand-500 hover:bg-brand-400 text-slate-900 font-medium">Get Started</a>
       </div>
     </div>
   </section>

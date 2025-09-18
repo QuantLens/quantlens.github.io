@@ -1,0 +1,30 @@
+---
+const { src = '/samples/opusdt.sample.json' } = Astro.props;
+---
+<section class="glass p-6 rounded-xl">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-lg font-semibold">Live JSON Demo</h3>
+    <button id="copyBtn" class="px-3 py-1.5 text-sm rounded-md bg-brand-500 text-slate-900 hover:bg-brand-400">Copy</button>
+  </div>
+  <pre class="overflow-auto text-sm max-h-96"><code id="jsonCode" class="language-json">Loading…</code></pre>
+  <p class="text-xs text-slate-400 mt-2">Source: {src}</p>
+</section>
+
+<script>
+  const src = "{src}";
+  async function load() {
+    try {
+      const res = await fetch(src, { cache: 'no-store' });
+      const data = await res.json();
+      const formatted = JSON.stringify(data, null, 2);
+      document.getElementById('jsonCode').textContent = formatted;
+    } catch (e) {
+      document.getElementById('jsonCode').textContent = 'Failed to load sample JSON';
+    }
+  }
+  load();
+  document.getElementById('copyBtn')?.addEventListener('click', () => {
+    const text = document.getElementById('jsonCode')?.textContent || '';
+    navigator.clipboard.writeText(text);
+  });
+</script>
