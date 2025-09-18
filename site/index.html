@@ -17,10 +17,11 @@
   <script>
     // Register service worker with version to ensure updates
     (function(){
-      const VER = '2025-09-18-1';
+      const VER = '2025-09-18-root-1';
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          const swUrl = `./sw.js?b=${VER}`;
+          // Register at the origin scope so it controls all routes
+          const swUrl = `/sw.js?b=${VER}`;
           navigator.serviceWorker.register(swUrl).then(reg => {
             // Reload when a new SW takes control
             navigator.serviceWorker.addEventListener('controllerchange', () => {
