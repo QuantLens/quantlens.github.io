@@ -814,3 +814,109 @@ p {
 .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px}
 .form-input{padding:10px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--text)}
 .form-textarea{grid-column:1/-1; min-height:140px; padding:10px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--text)}
+
+/* ===============================================
+   Documentation Section Styles
+   =============================================== */
+
+.documentation {
+  padding: 6rem 0;
+  background: linear-gradient(
+    135deg,
+    rgba(30, 41, 59, 0.5),
+    rgba(15, 23, 42, 0.8)
+  );
+  position: relative;
+}
+
+.documentation::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 20% 50%,
+    rgba(59, 130, 246, 0.05) 0%,
+    transparent 50%
+  ),
+  radial-gradient(
+    circle at 80% 20%,
+    rgba(168, 85, 247, 0.05) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+}
+
+.documentation__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.documentation .card {
+  background: rgba(30, 41, 59, 0.6);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.documentation .card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 
+    0 10px 25px -5px rgba(0, 0, 0, 0.25),
+    0 0 30px rgba(59, 130, 246, 0.1);
+}
+
+.documentation .card h3 {
+  color: var(--gray-100);
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.documentation .card ul {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.documentation .card ul li {
+  margin-bottom: 0.5rem;
+  color: var(--gray-300);
+}
+
+.documentation .card ul li strong {
+  color: var(--gray-200);
+  font-weight: 600;
+}
+
+.documentation .text-accent {
+  color: var(--accent-400);
+  font-weight: 500;
+}
+
+.documentation .brand {
+  margin-top: 4rem;
+  padding-top: 3rem;
+  border-top: 1px solid rgba(71, 85, 105, 0.2);
+}
+
+.documentation .brand__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .documentation .brand__row {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  .documentation__grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
