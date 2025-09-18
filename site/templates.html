@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QuantLens — Templates</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <!-- Optional: set base path if hosting as project site (YOUR-USER.github.io/YOUR-REPO/) -->
+  <!-- <base href="/YOUR-REPO/"> -->
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav__row">
+      <div class="brand">
+        <img src="./assets/ql-logo.svg" class="brand__logo" alt="QuantLens"/>
+        <span class="brand__name">QuantLens</span>
+      </div>
+      <nav class="menu">
+        <a href="./index.html#features">Features</a>
+        <a href="./how.html">How it works</a>
+        <a href="./product.html">Product</a>
+        <a href="./templates.html">Templates</a>
+        <a href="./pricing.html">Pricing</a>
+        <a href="./contact.html" class="btn btn--sm">Contact</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1>Templates — Prompts and Examples</h1>
+    <p class="muted">Copy-ready prompts, sample payloads, and example LLM outputs. Educational only — not financial advice.</p>
+
+    <section class="card">
+      <h2>Prompt — Full technical analysis</h2>
+      <p class="muted">Use this with a single payload for a detailed TA brief.</p>
+      <pre class="scroll mono" id="tpl-ta">You are a pro technical analyst. Read the QuantLens JSON and produce:
+1) 1-paragraph market state.
+2) Trend by horizon (short/medium/long).
+3) Momentum & volatility (SMA/EMA, RSI, ATR%, HV, BB position).
+4) VP-Lite (POC/VAL/VAH, acceptance, regime) and implications.
+5) Levels (support/resistance, fib) with specific prices.
+6) Scenarios/signals (triggers, invalids, stops, TPs, RR).
+7) Risk section (sizing via ATR, failure modes).
+8) Actionable plan: bull, bear, range.
+9) Be ready to answer follow-ups from the same context.
+Rules: Use numbers as given; don’t invent fields not present. If a block is missing, say "not provided" and continue.
+Payload follows:</pre>
+      <div class="row mt-8">
+        <button class="btn" data-copy-target="#tpl-ta">Copy prompt</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Prompt — Rank multiple symbols</h2>
+      <p class="muted">Concatenate multiple payloads separated by a line that contains just <code>---</code>.</p>
+      <pre class="scroll mono" id="tpl-rank">You are a portfolio analyst. Given N QuantLens payloads separated by a line with --- :
+- Summarize each in one line (bias, momentum, VP regime, key level).
+- Rank 1..N by risk-adjusted opportunity for the next two sessions.
+- For top 3, give trigger, invalidation, targets, and position sizing cue (via ATR%).
+- Note correlations and avoid redundant exposures when ranking.
+Output a compact table and a short plan.</pre>
+      <div class="row mt-8">
+        <button class="btn" data-copy-target="#tpl-rank">Copy ranking prompt</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Samples — JSON payloads</h2>
+      <div class="tabs" data-tabs>
+        <div class="tabs__list">
+          <button class="tabs__btn is-active" data-tab="btc">BTC 5m</button>
+          <button class="tabs__btn" data-tab="eth">ETH 15m</button>
+          <button class="tabs__btn" data-tab="dxy">DXY 1h</button>
+        </div>
+        <div class="tabs__panel is-active" data-panel="btc">
+          <pre class="scroll mono" id="tpl-btc">{"schema":"v1","ver":1,"uid":"BTCUSDT.P-5-1758169500","s":"BTCUSDT.P","tf":"5","t":1758169500,"horizons":{"short":{"tf":"5","n":100,"hdr":{"c":117318.9,"ch1":-78.8,"chN":1319.1,"rng":2578.7,"rngp":0.022},"feat":{"sma":116486.918,"ema":116911.554,"rsi":57.189,"atr":159.718,"atrp":0.001,"hv20":0.017,"bbp":0.713,"vrel":1.818}}},"pair":{"sym":"BINANCE:BTCUSDT.P","corr":1},"risk":{"atrp":0.001,"dd14":0.003},"regime":"uptrend"}</pre>
+          <div class="row mt-8"><button class="btn" data-copy-target="#tpl-btc">Copy BTC JSON</button></div>
+        </div>
+        <div class="tabs__panel" data-panel="eth">
+          <pre class="scroll mono" id="tpl-eth">{"schema":"v1","ver":1,"uid":"ETHUSDT-15-1758169500","s":"ETHUSDT","tf":"15","t":1758169500,"horizons":{"short":{"tf":"15","n":100,"hdr":{"c":2685.2,"ch1":-5.4,"chN":85.1,"rng":32.5,"rngp":0.012},"feat":{"sma":2678.4,"ema":2680.1,"rsi":54.3,"atr":7.8,"atrp":0.003,"hv20":0.021,"bbp":0.62,"vrel":1.12}}},"pair":{"sym":"BINANCE:ETHUSDT","corr":1},"risk":{"atrp":0.003,"dd14":0.006},"regime":"uptrend"}</pre>
+          <div class="row mt-8"><button class="btn" data-copy-target="#tpl-eth">Copy ETH JSON</button></div>
+        </div>
+        <div class="tabs__panel" data-panel="dxy">
+          <pre class="scroll mono" id="tpl-dxy">{"schema":"v1","ver":1,"uid":"DXY-60-1758169500","s":"DXY","tf":"60","t":1758169500,"horizons":{"short":{"tf":"60","n":100,"hdr":{"c":100.48,"ch1":-0.10,"chN":-0.85,"rng":0.60,"rngp":0.006},"feat":{"sma":100.62,"ema":100.58,"rsi":48.9,"atr":0.22,"atrp":0.002,"hv20":0.013,"bbp":0.38,"vrel":0.92}}},"regime":"downtrend"}</pre>
+          <div class="row mt-8"><button class="btn" data-copy-target="#tpl-dxy">Copy DXY JSON</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Example LLM output</h2>
+      <pre class="scroll mono" id="tpl-llm">BTCUSDT.P — 5m Tactical Brief — Last close: 117,318.9
+Confidence: 6/10 (improves on momentum reclaim above nearby LHs)
+- Uptrend across horizons; RSI: 5m 57.2, 1h 57.1, D 54.5; BB% 0.713.
+- ATR(5m) ~160; HV20: 0.017/0.042/0.129; vrel 1.82.
+- Reclaim >117,530 → adds >117,700 → BO >117,830. Stops: 1x ATR.
+- T1 117,700; T2 117,830; T3 118,000–118,100.
+Educational only — not financial advice.</pre>
+      <div class="row mt-8"><button class="btn" data-copy-target="#tpl-llm">Copy LLM output</button></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer__row">
+      <span>© <span id="year"></span> StratoTrade Labs — QuantLens</span>
+      <nav>
+        <a href="./index.html#top">Home</a>
+        <a href="./pricing.html">Pricing</a>
+        <a href="./contact.html">Contact</a>
+      </nav>
+    </div>
+  </footer>
+  <script src="./app.js"></script>
+</body>
+</html>

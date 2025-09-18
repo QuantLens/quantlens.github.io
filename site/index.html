@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QuantLens — Multi‑Horizon Market Export Engine</title>
+  <meta name="description" content="Turn TradingView alerts into LLM‑ready technical analysis. Compact JSON, multi‑horizon features, VP‑Lite, signals, and risk in one payload." />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="icon" href="./assets/ql-logo.svg" type="image/svg+xml">
+  <!-- Optional: set base path if hosting as project site (QuantLens.github.io/YOUR-REPO/) -->
+  <!-- <base href="/YOUR-REPO/"> -->
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav__row">
+      <div class="brand">
+        <img src="./assets/ql-logo.svg" alt="QuantLens" class="brand__logo" />
+        <span class="brand__name">QuantLens</span>
+      </div>
+      <nav class="menu">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#llm">LLM value</a>
+        <a href="#llm-output">Sample output</a>
+        <a href="#automation">Automation</a>
+        <a href="#faq">FAQ</a>
+        <a href="#refunds">Refunds</a>
+        <a href="./templates.html">Templates</a>
+        <a href="#prompt">Paste & prompt</a>
+        <a class="btn btn--sm" href="#get-started">Get started</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="top">
+      <div class="container hero__grid">
+        <div class="hero__copy">
+          <h1>QuantLens™: Unleash a 360° Market Vision to Dominate Trading</h1>
+          <p>Scan your watchlist with TradingView workflows, unlock LLM‑powered TA, and master stocks, crypto, and forex with multi‑horizon context, VP‑Lite, signals, risk, and pair insights.</p>
+          <div class="hero__cta">
+            <a class="btn btn--primary" href="./product.html">See the product</a>
+            <a class="btn" href="./how.html">How it works</a>
+            <a class="btn" href="./contact.html">Join waitlist</a>
+          </div>
+          <div class="hero__links">
+            <a href="../README.md">README</a>
+            <span>·</span>
+            <a href="../SETTINGS.md">Settings</a>
+            <span>·</span>
+            <a href="../MARKETING_LLMS.md">What LLMs Extract</a>
+          </div>
+        </div>
+        <div class="hero__panel">
+          <div class="glass card code">
+            <div class="code__bar">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="code__title">payload.json</span>
+            </div>
+            <pre><code id="sample-json" class="scroll">
+{
+  "schema":"v1",
+  "uid":"OPUSDT.P-5-1758199200",
+  "s":"OPUSDT.P",
+  "tf":"5",
+  "t":1758199200,
+  "horizons":{ "short":{ "hdr":{"c":0.8161,"chN":-0.002,"rngp":0.027},
+    "feat":{"sma":0.814,"ema":0.813,"rsi":52.26,"atrp":0.003,"bbp":0.84},
+    "levels":{"fib":[0.805,0.827]} },
+    "medium":{"hdr":{"chN":0.045}},
+    "long":{"hdr":{"chN":-0.509}} },
+  "vp":{"poc":0.819,"val":0.809,"vah":0.819,"in_va":1,"regime":"discovery"},
+  "risk":{"atrp":0.003,"dd14":0.004},
+  "sig":{"long":{"trigger":0.828,"stop":0.825,"tp1":0.830}}
+}
+            </code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="features" id="features">
+      <div class="container">
+        <h2>Sleek, signal‑dense, and LLM‑friendly</h2>
+        <div class="grid cards">
+          <article class="card">
+            <h3>Multi‑horizon context</h3>
+            <p>Short, medium, and long horizons in one snapshot. Aggregates, features, and compact levels ready for models.</p>
+          </article>
+          <article class="card">
+            <h3>VP‑Lite built in</h3>
+            <p>POC/VAL/VAH, acceptance, regime, and drift. Enough volume structure for robust prompts — without bloat.</p>
+          </article>
+          <article class="card">
+            <h3>Signals & risk blocks</h3>
+            <p>Ready‑made triggers, invalidations, stops, targets, and RR hints. Snap to action with minimal prompt tokens.</p>
+          </article>
+          <article class="card">
+            <h3>Compact JSON</h3>
+            <p>Short keys, stable ordering, precision control. Designed to minimize token cost and parsing friction.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="how" id="how">
+      <div class="container">
+        <h2>How it works</h2>
+        <ol class="steps">
+          <li><strong>TradingView</strong> — Add the QuantLens indicator to your chart.</li>
+          <li><strong>Create an alert</strong> — Condition: the study, Event: Any alert(), Timing: once per bar close.</li>
+          <li><strong>Deliver</strong> — Webhook to your collector or copy from Alert Log.</li>
+          <li><strong>Store</strong> — Save as <code>/symbol/tf/epoch.json</code>.</li>
+          <li><strong>Analyze</strong> — Feed the JSON + prompt to your LLM. Instant TA.</li>
+        </ol>
+        <p class="muted">Tip: Scale across a watchlist with multi‑chart layouts and a single webhook endpoint that accepts all symbols.</p>
+      </div>
+    </section>
+
+    <section class="llm" id="llm">
+      <div class="container">
+        <h2>What the LLM sees at a glance</h2>
+        <div class="grid cards">
+          <article class="card">
+            <h3>Market state</h3>
+            <p>Session, anomaly flags, health, ATR rank. Tight vs explosive tape in a sentence.</p>
+          </article>
+          <article class="card">
+            <h3>Trend & momentum</h3>
+            <p>SMA/EMA alignment, RSI, ADX/DI, OBV slope. Clear bias per horizon.</p>
+          </article>
+          <article class="card">
+            <h3>Volume structure</h3>
+            <p>POC magnet, value acceptance, discovery vs balance. Where moves are likely to stick.</p>
+          </article>
+          <article class="card">
+            <h3>Actionable scenarios</h3>
+            <p>Breakout, rejection, or range. Triggers, invalidations, stops, and TPs — pre‑wired.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="prompt" id="prompt">
+      <div class="container">
+        <h2>Paste & prompt</h2>
+        <div class="prompt__grid">
+          <div class="prompt__col">
+            <label for="json">Your QuantLens JSON</label>
+            <textarea id="json" class="mono" placeholder="Paste payload here…"></textarea>
+            <div class="row">
+              <button class="btn" data-load-sample>Load sample</button>
+              <button class="btn" data-clear>Clear</button>
+            </div>
+          </div>
+          <div class="prompt__col">
+            <label for="tpl">Prompt template</label>
+            <textarea id="tpl" class="mono" readonly></textarea>
+            <div class="row">
+              <button class="btn" data-copy-tpl>Copy prompt</button>
+              <button class="btn btn--primary" data-copy-all>Copy prompt + JSON</button>
+            </div>
+            <p class="muted small">Pro tip: For watchlists, concatenate multiple payloads with a line that contains just <code>---</code> and use a ranking prompt.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="prompt" id="try">
+      <div class="container">
+        <h2>Try it yourself — copy & paste</h2>
+        <div class="card">
+          <div class="tabs" data-tabs>
+            <div class="tabs__list">
+              <button class="tabs__btn is-active" data-tab="btc">BTC 5m</button>
+              <button class="tabs__btn" data-tab="eth">ETH 15m</button>
+              <button class="tabs__btn" data-tab="dxy">DXY 1h</button>
+            </div>
+            <div class="tabs__panel is-active" data-panel="btc">
+              <p class="muted">TradingView email/app notification sample (BTCUSDT.P 5m):</p>
+              <pre class="scroll mono" id="sample-email">Your BTCUSDT.P alert was triggered
+{"schema":"v1","ver":1,"uid":"BTCUSDT.P-5-1758169500","s":"BTCUSDT.P","tf":"5","t":1758169500,"horizons":{"short":{"tf":"5","n":100,"hdr":{"c":117318.9,"ch1":-78.8,"chN":1319.1,"rng":2578.7,"rngp":0.022},"feat":{"sma":116486.918,"ema":116911.554,"rsi":57.189,"atr":159.718,"atrp":0.001,"hv20":0.017,"bbp":0.713,"vrel":1.818,"hh":40,"hl":48,"lh":26,"ll":29,"bkU":0,"bkD":0,"slope":0},"levels":{"sr":[],"fib":[115251.3,117830]}},"medium":{"tf":"60","hdr":{"c":117318.9,"ch1":-201.4,"chN":5835.8,"rng":6958.3,"rngp":0.059},"feat":{"sma":115128.033,"ema":115646.984,"rsi":57.132,"atr":454.323,"atrp":0.004,"hv20":0.042}},"long":{"tf":"D","hdr":{"c":117318.9,"ch1":923,"chN":58682.1,"rng":72032,"rngp":0.614},"feat":{"sma":103024.929,"ema":105568.226,"rsi":54.504,"atr":2946.509,"atrp":0.025,"hv20":0.129}}},"pair":{"sym":"BINANCE:BTCUSDT.P","corr":1},"risk":{"atrp":0.001,"dd14":0.003},"regime":"uptrend","sig":{"bull_break":0,"bear_break":0},"bars":[[1758080400,116430.0,116430.1,116379.0,116418.2,106.8881],...]}</pre>
+              <div class="row mt-8">
+                <button class="btn" data-copy-target="#sample-email">Copy BTC sample</button>
+                <a class="btn" href="#prompt">Use with prompt</a>
+              </div>
+            </div>
+            <div class="tabs__panel" data-panel="eth">
+              <p class="muted">ETH/USDT 15m illustrative sample:</p>
+              <pre class="scroll mono" id="sample-eth">Your ETHUSDT alert was triggered
+{"schema":"v1","ver":1,"uid":"ETHUSDT-15-1758169500","s":"ETHUSDT","tf":"15","t":1758169500,"horizons":{"short":{"tf":"15","n":100,"hdr":{"c":2685.2,"ch1":-5.4,"chN":85.1,"rng":32.5,"rngp":0.012},"feat":{"sma":2678.4,"ema":2680.1,"rsi":54.3,"atr":7.8,"atrp":0.003,"hv20":0.021,"bbp":0.62,"vrel":1.12}}},"pair":{"sym":"BINANCE:ETHUSDT","corr":1},"risk":{"atrp":0.003,"dd14":0.006},"regime":"uptrend","sig":{"bull_break":0,"bear_break":0}}</pre>
+              <div class="row mt-8">
+                <button class="btn" data-copy-target="#sample-eth">Copy ETH sample</button>
+                <a class="btn" href="#prompt">Use with prompt</a>
+              </div>
+            </div>
+            <div class="tabs__panel" data-panel="dxy">
+              <p class="muted">DXY 1h illustrative sample:</p>
+              <pre class="scroll mono" id="sample-dxy">Your DXY alert was triggered
+{"schema":"v1","ver":1,"uid":"DXY-60-1758169500","s":"DXY","tf":"60","t":1758169500,"horizons":{"short":{"tf":"60","n":100,"hdr":{"c":100.48,"ch1":-0.10,"chN":-0.85,"rng":0.60,"rngp":0.006},"feat":{"sma":100.62,"ema":100.58,"rsi":48.9,"atr":0.22,"atrp":0.002,"hv20":0.013,"bbp":0.38,"vrel":0.92}}},"regime":"downtrend","sig":{"bull_break":0,"bear_break":1}}</pre>
+              <div class="row mt-8">
+                <button class="btn" data-copy-target="#sample-dxy">Copy DXY sample</button>
+                <a class="btn" href="#prompt">Use with prompt</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="prompt" id="llm-output">
+      <div class="container">
+        <h2>Sample LLM Output — BTCUSDT.P 5m</h2>
+        <div class="card">
+          <p class="muted">This is an example of the kind of trade-ready brief an LLM can produce from the QuantLens JSON above.</p>
+          <pre class="scroll mono" id="sample-llm-output">BTCUSDT.P — 5m Tactical Brief — Last close: 117,318.9
+
+Confidence: 6/10 (improves on momentum reclaim above nearby LHs)
+
+Market picture
+- Regime: Uptrend across horizons (price above SMA/EMA on 5m/1h/D)
+- Momentum/placement:
+  - RSI: 5m 57.2, 1h 57.1, D 54.5 (all > 50 = constructive)
+  - BB %: 0.713 (price operating in the upper band zone)
+- Volatility/participation:
+  - ATR (5m): ~160 pts (atrp 0.10%)
+  - HV20: 5m 0.017 (modest), 1h 0.042, D 0.129 (normalizing higher by TF)
+  - vrel: 1.82 (above‑average recent activity)
+- Micro-tape: Last bar −78.8 from open (minor dip) following a local swing high of 117,830 earlier in the session
+
+Key context and levels
+- Short TF trend filters: c > EMA(5m) 116,911.6 and > SMA(5m) 116,486.9
+- Intraday pivots to watch:
+  - 117,530–117,700: lower-high reclaim band
+  - 117,830: session high/pivot (breakout line)
+  - 117,160–117,240: pullback shelf near 1x ATR below prospective entries
+
+Primary setup — Continuation long (reclaim-and-go)
+- Trigger: 5m close back above 117,530 (first LH reclaim). Momentum add above 117,700. Breakout confirmation above 117,830.
+- Entry ideas:
+  - Reclaim entry: 117,540–117,580 after close > 117,530
+  - Momentum entry: 117,710–117,740 with expanding volume (vrel stays > 1)
+  - Breakout entry: on acceptance > 117,835 after a small retest wick
+- Invalidation/stop:
+  - Reclaim entry: 1x ATR (~160 pts) below entry or below 117,380 structure
+  - Momentum/BO: below the trigger bar low
+- Targets:
+  - T1: 117,700 (partial 30–50%)
+  - T2: 117,830 (prior high)
+  - T3: 118,000–118,100 (extension if vrel remains > 1)
+- Risk framing:
+  - Example: at 117,560 with 160‑pt stop → R per 0.1 BTC ≈ $16; size to risk ≤0.25% of account
+
+Alternate setup — Mean-reversion fade (failed reclaim)
+- Tell: Sweep into 117,530–117,700 followed by a decisive 5m close back below 117,480 with weakening tape
+- Entry: 117,460–117,500 after the rejection close
+- Invalidation: > 117,710 (acceptance above the rejection zone)
+- Targets: 117,280 (T1), 117,160 (T2 near 1x ATR pocket)
+- Note: Use smaller size; trend is up—fades are counter the higher‑timeframe bias
+
+Quick pre‑trade checklist
+- Price action: 5m close over your trigger with a higher low (no immediate rejection wick)
+- Volume: vrel stays ≥ 1.0 on the trigger bar or retest
+- Structure: No fresh lower high printed immediately after entry
+- Risk: Stop ≤ 1–1.5x ATR from fill; position risk ≤ your plan’s max (e.g., 0.25%)
+
+What would invalidate the long idea
+- Acceptance back below ~117,240 (structure + ~1x ATR from common reclaim fills)
+- Multiple 5m closes below 5m EMA (116,912) with RSI rolling under 50
+
+Notes
+- The tape just printed a minor red bar within an overall up regime; the bullish path improves on reclaim of 117,530 then 117,700. A clean break/acceptance above 117,830 reopens extension.
+- All levels and stats sourced from your payload: horizons.short/medium/long, feat (RSI/SMA/EMA/ATR/BBP/HV20), and last 5m bars.
+
+Educational only — not financial advice.</pre>
+          <div class="row mt-8">
+            <button class="btn" data-copy-llm-output>Copy LLM output</button>
+            <a class="btn" href="#prompt">Use with your JSON</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+      <section class="marketing" id="automation">
+        <div class="container">
+          <h2>⚡ Automation Config — Email to AI in One Flow</h2>
+          <div class="card">
+            <p><strong>From Inbox to Insight.</strong><br/>
+            QuantLens™ connects seamlessly with your Gmail, so every TradingView alert you receive is automatically read, parsed, and transformed into actionable TA reports by ChatGPT-5.</p>
+
+            <h3>How It Actually Works</h3>
+            <ol class="steps steps--compact">
+              <li><strong>TradingView Sends the Alert</strong> — You define the alert template (JSON or text).</li>
+              <li><strong>QuantLens Picks It Up</strong> — Using secure Gmail API access (OAuth), QuantLens only reads the alerts you configure.</li>
+              <li><strong>AI Expands the Signal</strong> — ChatGPT-5 converts the raw alert into a structured market report with trade levels, confidence, and correlation insights.</li>
+              <li><strong>Delivered Your Way</strong> — Reports appear instantly in your QuantLens dashboard — and can also be forwarded to Discord, Telegram, or Slack.</li>
+            </ol>
+
+            <h3>Why This Matters</h3>
+            <ul>
+              <li>📩 No more copy-pasting alerts from email.</li>
+              <li>⏱ Faster reaction time — TA is ready in seconds.</li>
+              <li>🔒 Secure — you’re in control of what’s shared.</li>
+              <li>🎯 Marketable without hype — it really does work this way today.</li>
+            </ul>
+
+            <div class="row mt-8">
+              <a class="btn btn--primary" href="./contact.html">Enable Automation Config</a>
+            </div>
+            <p class="muted small">Note: Gmail API access requires your explicit OAuth consent; only the labels/filters you select are read.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="marketing" id="faq">
+        <div class="container">
+          <h2>FAQs</h2>
+          <div class="cards">
+            <article class="card">
+              <h3>How fast will I get access after payment?</h3>
+              <p><strong>A:</strong> Access is near-instant. Once you submit your email + TradingView username, you’ll get an invite link granting access to our TradingView script.</p>
+            </article>
+            <article class="card">
+              <h3>Do I need to install anything?</h3>
+              <p><strong>A:</strong> No downloads required. Everything runs inside TradingView and Gmail. QuantLens handles the automation on the backend.</p>
+            </article>
+            <article class="card">
+              <h3>Is my Gmail secure?</h3>
+              <p><strong>A:</strong> Yes. We use OAuth authentication, which means QuantLens only reads TradingView alerts — nothing else in your inbox. You control access and can revoke anytime.</p>
+            </article>
+            <article class="card">
+              <h3>Can I cancel anytime?</h3>
+              <p><strong>A:</strong> Yes — subscriptions are flexible. Cancel anytime, and your TradingView invite-only script access will be revoked.</p>
+            </article>
+            <article class="card">
+              <h3>Which markets are supported?</h3>
+              <p><strong>A:</strong> Crypto (BTC, ETH, and altcoins), indices (SPX, NASDAQ), forex (DXY, EUR/USD), and more.</p>
+            </article>
+            <article class="card">
+              <h3>How does this help me trade better?</h3>
+              <p><strong>A:</strong> Instead of juggling alerts and charts, QuantLens auto-expands alerts into structured TA: trade levels, stops, targets, and risk-reward. Less noise, more clarity.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="marketing" id="trust">
+        <div class="container">
+          <h2>Trust & Security</h2>
+          <div class="grid marketing__grid">
+            <div class="card">
+              <h3>Secure by Design</h3>
+              <ul>
+                <li>🔒 OAuth Gmail integration — no passwords shared.</li>
+                <li>📩 Private alerts only — we only read TradingView alerts you configure.</li>
+                <li>❌ No data mining — your data is never sold, shared, or stored.</li>
+                <li>🔑 Full control — revoke Gmail access instantly.</li>
+                <li>💳 Cancel anytime — no lock-in, no contracts.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>Our Promise</h3>
+              <p>QuantLens™ is built by traders, for traders. Your data stays yours.</p>
+              <h3>What we do (and don’t) collect</h3>
+              <ul>
+                <li><strong>Invite-Only Access</strong> — Your TradingView username is only used to grant you access to our invite-only indicator.</li>
+                <li><strong>Gmail Integration (Optional)</strong> — If enabled, QuantLens uses Google OAuth. Access is limited to the alert emails you configure. You can revoke permissions any time in Google account settings.</li>
+                <li><strong>No Data Mining</strong> — Alerts are read, processed, and immediately transformed into TA — that’s it.</li>
+                <li><strong>Secure Payments</strong> — All payments are handled by trusted providers with encrypted checkout.</li>
+                <li><strong>Revoke Anytime</strong> — Cancel your subscription or revoke Gmail access instantly — you stay in full control.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="marketing" id="refunds">
+        <div class="container">
+          <h2>Refund Policy</h2>
+          <div class="card">
+            <p><strong>Clear. Simple. Fair.</strong></p>
+            <ul>
+              <li>✅ <strong>Cancel Anytime</strong> — End your subscription whenever you like, no penalties.</li>
+              <li>❌ <strong>No Retroactive Refunds</strong> — Payments already processed can’t be reversed, since access is delivered instantly.</li>
+              <li>🔄 <strong>Automatic Protection</strong> — If you’re ever charged twice in error, the duplicate payment is refunded immediately.</li>
+            </ul>
+            <h3>Why No Retroactive Refunds?</h3>
+            <p>QuantLens™ is an invite-only digital product. Once your TradingView access is activated, the full value is unlocked right away — which is why we keep billing simple and non-refundable.</p>
+            <h3>Our Commitment</h3>
+            <p>We’ll never lock you in or play games with hidden fees. You’re in control of your account, always.</p>
+            <p class="small muted"><strong>Checkout badge:</strong> 💸 Cancel anytime. No retroactive refunds. Duplicate charges always refunded.</p>
+          </div>
+        </div>
+      </section>
+
+    <section class="cta" id="get-started">
+      <div class="container cta__box">
+        <h2>Start sending LLM‑ready TA in minutes</h2>
+        <p>Add the indicator, create an alert, and point it to your webhook. That’s it.</p>
+        <div class="row">
+          <a class="btn btn--primary" href="../README.md">Read the README</a>
+          <a class="btn" href="../SETTINGS.md">Configure settings</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <section class="marketing" id="watchlist">
+    <div class="container">
+      <h2>Scan your watchlist. Paste. Get pro TA.</h2>
+      <div class="grid marketing__grid">
+        <div class="card">
+          <h3>Watchlist workflow (practical)</h3>
+          <ol class="steps steps--compact">
+            <li>Build your TradingView watchlist (stocks, crypto, forex, indices).</li>
+            <li>Add QuantLens to each chart in a multi‑chart layout.</li>
+            <li>Create one alert per chart (Any alert(), once per bar close).</li>
+            <li>Deliver via webhook (recommended) or copy from Alert Log.</li>
+            <li>Paste JSON under the prompt → LLM returns advanced TA.</li>
+          </ol>
+          <p class="muted small">Note: TradingView doesn’t let Pine iterate your watchlist automatically. Use multi‑chart + consistent alerts, or browser automation to mass‑create alerts. Webhooks scale best.</p>
+        </div>
+        <div class="card">
+          <h3>Beginners</h3>
+          <p>Start with 10–20 symbols. Use Balanced profile. Focus on clear setups (breakout / rejection / range). The LLM explains RSI, support, and risk in plain language.</p>
+          <h3>Pros</h3>
+          <p>Run 4–8 charts at once, multiple TFs, and fan‑in webhooks. Rank opportunities and forward to bots. Save hours — keep discretion where it matters.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="brand" id="brand">
+    <div class="container brand__row">
+      <div>
+        <h3>Built by StratoTrade Labs</h3>
+        <p class="muted">We craft signal‑dense, low‑friction tools for discretionary and systematic traders.</p>
+      </div>
+      <div class="quote card">
+        <p>“QuantLens scans my symbols and my LLM gives pro‑level TA in seconds — it’s a game‑changer for newbies and vets alike.”</p>
+        <span class="muted small">— Mike T., Pro Trader</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="legal" id="disclaimer">
+    <div class="container">
+      <p class="muted small">Disclaimer: Trading involves risk. Nothing on this site is financial advice. Use QuantLens responsibly. Alerts and webhooks depend on your TradingView plan limits.</p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer__row">
+      <span>© <span id="year"></span> StratoTrade Labs — QuantLens</span>
+      <nav>
+        <a href="../README.md">README</a>
+        <a href="../MARKETING_LLMS.md">What LLMs Extract</a>
+        <a href="./templates.html">Templates</a>
+        <a href="#faq">FAQ</a>
+        <a href="#top">Back to top</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>

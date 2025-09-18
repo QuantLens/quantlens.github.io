@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QuantLens — Product</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <!-- Optional: set base path if hosting as project site (QuantLens.github.io/YOUR-REPO/) -->
+  <!-- <base href="/YOUR-REPO/"> -->
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav__row">
+      <div class="brand">
+        <img src="./assets/ql-logo.svg" class="brand__logo" alt="QuantLens"/>
+        <span class="brand__name">QuantLens</span>
+      </div>
+      <nav class="menu">
+        <a href="./index.html#features">Features</a>
+        <a href="./how.html">How it works</a>
+        <a href="./product.html">Product</a>
+        <a href="./index.html#automation">Automation</a>
+        <a href="./index.html#faq">FAQ</a>
+        <a href="./index.html#refunds">Refunds</a>
+        <a href="./templates.html">Templates</a>
+        <a href="./pricing.html">Pricing</a>
+        <a href="./contact.html" class="btn btn--sm">Contact</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    <h1>QuantLens™: Your All‑Access Pass to Market Mastery</h1>
+    <p class="muted">Revolutionary templates unlock comprehensive TA and pair insights.</p>
+
+    <section class="features" id="adv">
+      <div class="cards">
+        <article class="card">
+          <h3>Complete Market Vision</h3>
+          <p>Multi‑horizon data (5m, 1h, daily), chart cues, and pair context (e.g., DXY ↔ BTC) for a holistic view LLMs love.</p>
+        </article>
+        <article class="card">
+          <h3>Correlation Power</h3>
+          <p>Analyze how DXY’s trend impacts BTC or your FX book; surface drivers that matter to execution.</p>
+        </article>
+        <article class="card">
+          <h3>Automation Ready</h3>
+          <p>Webhooks fan‑in to a single endpoint, integrate with bots, and scale scanning safely.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Sample Template (BTC/USDT)</h2>
+      <pre class="scroll mono">{
+  "symbol": "BTCUSDT",
+  "price": 60000.50,
+  "timeframe": "5m",
+  "indicators": { "rsi": 52.26, "adx": 28.875, "vwap": 60010.20, "poc": 60015.00 },
+  "signals": { "breakout_long": { "trigger": 60100.00, "stop": 59950.00, "target": 60250.00, "rr": "1:1" } },
+  "correlation": { "dxy_btc": -0.75, "context": "DXY downtrend supports BTC upside" }
+}</pre>
+      <p class="small muted">Note: Exact keys differ from production short‑key schema; this example is illustrative.</p>
+    </section>
+  </main>
+  <footer class="footer">
+    <div class="container footer__row">
+      <span>© <span id="year"></span> StratoTrade Labs — QuantLens</span>
+      <nav>
+        <a href="./index.html#top">Home</a>
+        <a href="./pricing.html">Pricing</a>
+        <a href="./contact.html">Contact</a>
+      </nav>
+    </div>
+  </footer>
+  <script src="./app.js"></script>
+</body>
+</html>

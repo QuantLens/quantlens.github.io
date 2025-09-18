@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QuantLens — Contact</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <!-- Optional: set base path if hosting as project site (QuantLens.github.io/YOUR-REPO/) -->
+  <!-- <base href="/YOUR-REPO/"> -->
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav__row">
+      <div class="brand">
+        <img src="./assets/ql-logo.svg" class="brand__logo" alt="QuantLens"/>
+        <span class="brand__name">QuantLens</span>
+      </div>
+      <nav class="menu">
+        <a href="./index.html#features">Features</a>
+        <a href="./how.html">How it works</a>
+        <a href="./product.html">Product</a>
+        <a href="./index.html#automation">Automation</a>
+        <a href="./index.html#faq">FAQ</a>
+        <a href="./index.html#refunds">Refunds</a>
+        <a href="./templates.html">Templates</a>
+        <a href="./pricing.html">Pricing</a>
+        <a href="./contact.html" class="btn btn--sm">Contact</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    <h1>Get in touch</h1>
+    <p class="muted">Reach StratoTrade Labs for support or inquiries.</p>
+    <section class="card">
+      <p>Email: <a href="mailto:support@stratotradelabs.com">support@stratotradelabs.com</a></p>
+      <p>X: <a href="#">x.com/stratotradelabs</a></p>
+      <form class="form-grid" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/thanks.html">
+        <input type="hidden" name="form-name" value="contact" />
+        <p class="hidden"><label>Don’t fill this out: <input name="bot-field" /></label></p>
+        <input class="form-input" name="name" placeholder="Name" required />
+        <input class="form-input" name="email" placeholder="Email" type="email" required />
+        <textarea class="form-textarea" name="message" placeholder="Message" required></textarea>
+        <button class="btn btn--primary" type="submit">Send</button>
+      </form>
+      <p class="small muted">No Netlify? For GitHub Pages, set form action to your email service or a serverless function.</p>
+      <p class="small muted">Support Hours: 24/7 email; live chat for Pro/Enterprise plans.</p>
+    </section>
+  </main>
+  <footer class="footer">
+    <div class="container footer__row">
+      <span>© <span id="year"></span> StratoTrade Labs — QuantLens</span>
+      <nav>
+        <a href="./index.html#top">Home</a>
+        <a href="./product.html">Product</a>
+        <a href="./pricing.html">Pricing</a>
+      </nav>
+    </div>
+  </footer>
+  <script src="./app.js"></script>
+</body>
+</html>

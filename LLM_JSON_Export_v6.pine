@@ -1,0 +1,1414 @@
+//@version=6
+// Indicator: QuantLens™ — Multi-Horizon Market Export Engine (v6)
+// Purpose : Emit compact, stable JSON snapshot per bar close with multi-horizon context.
+// Schema  : v1 (stable) — bump ver only for breaking schema changes.
+// Author  : (handover ready)
+// License : Internal / Proprietary (adjust as needed)
+// ------------------------------------------------------------------------------------
+// CHANGELOG
+// ver 1.0.0 (schema v1): Initial scaffolding, inputs & framework placeholders.
+// ver 1.1.0 (schema v1): Added optional signals block (sig) with bull/bear break flags & reversal probability.
+// ver 1.1.1 (schema v1): Precision rounding & trimming, NA omission improvements, integer time uid, HV optimization, pivot guard, conditional slope emission.
+// ------------------------------------------------------------------------------------
+// ROADMAP (v2 ideas): pagination for deep exports, pair spread z-score, MTF mini-snapshots,
+// optional econ hooks, config checksum.
+// ------------------------------------------------------------------------------------
+// IMPLEMENTATION NOTES
+// * Keep one variable per declaration (Pine v6 typing discipline).
+// * Use math.* not ta.log (reserved).
+// * Avoid /* ... */ block comments (JSON safety, parsing cleanliness).
+// * Omit heavy/NA fields from JSON (do not emit nulls — reduces payload size & noise).
+// * Maintain key order deterministically.
+// * Stable uid = <symbol>-<tf>-<bar_close_epoch>.
+// ------------------------------------------------------------------------------------
+
+indicator(title="QuantLens — Multi-Horizon Market Export Engine (v6)", shorttitle="QuantLens Export Engine", overlay=false)
+
+// =============================================
+// Constants
+// =============================================
+var string SCHEMA_TAG = "v1"
+var int    SCHEMA_VER = 1
+
+// Payload profile enumerations (string comparisons kept short & explicit)
+var string PROFILE_LEAN     = "Lean"
+var string PROFILE_BALANCED = "Balanced"
+var string PROFILE_RICH     = "Rich"
+
+// Scan modes (affect internal lookback lengths later)
+var string SCAN_SHORT  = "Short"
+var string SCAN_MEDIUM = "Medium"
+var string SCAN_DEEP   = "Deep"
+
+// =============================================
+// INPUTS (full set with guardrails)
+// =============================================
+string _scanMode       = input.string(SCAN_MEDIUM,  "Scan Mode",       options=[SCAN_SHORT, SCAN_MEDIUM, SCAN_DEEP])
+string _execTF         = input.string("5",          "Execution TF (m)", options=["1","2","5","15","30"])  // minute granularity
+string _payloadProf    = input.string(PROFILE_BALANCED, "Payload Profile", options=[PROFILE_LEAN, PROFILE_BALANCED, PROFILE_RICH])
+int    _precision      = input.int(3, "Precision", minval=0, maxval=6)
+int    _barsExec       = input.int(100, "Bars (exec TF)", minval=50, maxval=150)
+bool   _includeMedium  = input.bool(true,  "Include Medium (60m)")
+bool   _includeLong    = input.bool(true,  "Include Long (1D)")
+bool   _includeFib     = input.bool(true,  "Include Fib Levels")
+bool   _includeSignals = input.bool(false, "Include Signals Block")
+bool   _showPayloadLabel = input.bool(false, "Show Payload Label (pane)")
+bool   _includeHuman   = input.bool(false, "Include Human Summary")
+bool   _includeHumanMeta = input.bool(false, "Include Human Meta in JSON")
+bool   _includeVec     = input.bool(false, "Include Vector Snapshot")
+bool   _richStateOnly  = input.bool(false, "Rich On State Change Only")
+// Volume Profile (lite) toggle and settings
+bool   _includeVP      = input.bool(false, "Include Volume Profile (lite)")
+int    _vpBins         = input.int(80, "VP Bins", minval=20, maxval=200)
+float  _vpVaPct        = input.float(0.70, "VP Value Area %", minval=0.50, maxval=0.95, step=0.01)
+bool   _vpOverlay      = input.bool(false, "Show VP POC/VA overlay")
+int    _vpAcceptN      = input.int(50, "VP Acceptance Window (bars)", minval=5)
+int    _vpDriftW       = input.int(20, "VP POC Drift Window", minval=5)
+// VP overlay styling
+int    _vpLineWidth    = input.int(2,   "VP Line Width", minval=1, maxval=5)
+int    _vpTransp       = input.int(0,   "VP Transparency (0-100)", minval=0, maxval=100)
+string _vpTop          = input.string("POC", "Bring To Front", options=["POC","VAL","VAH"])
+// Macro context (optional, slow-moving)
+bool   _includeMacro   = input.bool(false, "Include Macro Context")
+string _macroTF        = input.string("D", "Macro TF", options=["60","240","D","W"])
+string _dxySymbol      = input.string("TVC:DXY", "DXY Symbol")
+string _vixSymbol      = input.string("CBOE:VIX", "VIX Symbol")
+string _btcSymbol      = input.string("BINANCE:BTCUSDT", "BTC Spot Symbol")
+int    _macroCorrShort = input.int(30, "Macro Corr Short (bars)", minval=5)
+int    _macroCorrLong  = input.int(90, "Macro Corr Long (bars)", minval=20)
+int    _macroSlopeW    = input.int(20, "DXY Slope Window", minval=5)
+float  _vixOnMax       = input.float(18.0, "VIX Risk-On Max", minval=5.0)
+float  _vixOffMin      = input.float(24.0, "VIX Risk-Off Min", minval=5.0)
+int    _barsPage       = input.int(1, "Bars Page", minval=1, maxval=9999)
+int    _barsPerPage    = input.int(100, "Bars Per Page", minval=20, maxval=500)
+int    _barsCompress   = input.int(1, "Bars Compression", minval=1, maxval=10)
+int    _srMaxShort     = input.int(2, "SR Max Short", minval=0, maxval=4)
+int    _srMaxMed       = input.int(2, "SR Max Medium", minval=0, maxval=4)
+int    _srMaxLong      = input.int(2, "SR Max Long", minval=0, maxval=4)
+string _pairSymbol     = input.symbol("", "Pair Symbol (corr)")
+int    _pairCorrWinRaw = input.int(50, "Pair Corr Window", minval=10, maxval=500)
+bool   _alertOnClose   = input.bool(true, "Alert on Bar Close")
+bool   _debugMode      = input.bool(false, "Debug Mode (dev only)")
+int    _wrapWidth      = input.int(110, "Payload Wrap Width", minval=40, maxval=240)
+
+// Derived numeric exec timeframe (minutes) from string input.
+float execTF_minutes = str.tonumber(_execTF)
+
+// Guardrail: clamp bars on ultra-low TF to mitigate memory/loop risk
+int barsExecEff = execTF_minutes <= 2 ? math.min(_barsExec, 120) : _barsExec
+
+// Scan mode dependent horizon lengths (used later for feature windows)
+int lookbackShort = _scanMode == SCAN_SHORT ? 50 : _scanMode == SCAN_MEDIUM ? 100 : 150
+int lookbackMedium = _scanMode == SCAN_SHORT ? 100 : _scanMode == SCAN_MEDIUM ? 200 : 300
+int lookbackLong = _scanMode == SCAN_SHORT ? 200 : _scanMode == SCAN_MEDIUM ? 400 : 600
+
+// Correlation window clamped to available bars and minimum viable length
+int maxBarsAvail = bar_index + 1
+int pairCorrWin = math.min(_pairCorrWinRaw, maxBarsAvail)
+pairCorrWin := math.max(pairCorrWin, 10)
+
+// Effective inclusion based on payload profile (Lean overrides toggles, Balanced respects inputs, Rich forces true)
+bool includeMediumEff = _payloadProf == PROFILE_LEAN ? false : _payloadProf == PROFILE_RICH ? true : _includeMedium
+bool includeLongEff   = _payloadProf == PROFILE_LEAN ? false : _payloadProf == PROFILE_RICH ? true : _includeLong
+bool includeFibEff    = _payloadProf == PROFILE_LEAN ? false : _includeFib
+
+// Precision guard (some metrics may enforce cap internally for size control)
+int precisionEff = _payloadProf == PROFILE_LEAN ? math.min(_precision, 3) : _precision
+
+// Placeholder structures for later implementation.
+// (We declare vars to reserve identifiers and avoid accidental shadowing.)
+var string lastPayload = ""
+var string lastUID = ""
+var table debugTable = na
+var string lastRegime = ""
+var int lastIntentLong = 0
+var int lastIntentShort = 0
+var int lastBreakUp = 0
+var int lastBreakDown = 0
+var int seq = 0
+var bool richExtrasEnabled = true
+
+// =============================================
+// Utility: number rounding & trimming
+// =============================================
+roundTrim(float v, int p) =>
+    if na(v)
+        ""
+    else
+        float pow10 = math.pow(10, p)
+        float r = math.round(v * pow10) / pow10
+        string s = str.tostring(r)
+        if str.contains(s, ".")
+            int len = str.length(s)
+            while len > 1 and str.substring(s, len - 1, len) == "0"
+                s := str.substring(s, 0, len - 1)
+                len := str.length(s)
+            if str.substring(s, str.length(s) - 1, str.length(s)) == "."
+                s := str.substring(s, 0, str.length(s) - 1)
+        s
+
+// === Underflow & dual-precision helpers ===
+var float MIN_EMIT_ABS = 1e-6
+
+safeEmit(float x) =>
+    na(x) ? "" : (math.abs(x) < MIN_EMIT_ABS ? str.tostring(x) : roundTrim(x, precisionEff))
+
+// Return both lean (rounded) and raw string forms
+emitDualStr(float x) =>
+    [roundTrim(x, precisionEff), str.tostring(x)]
+
+// Wrap a long string every `width` characters by inserting newlines.
+// This is purely for on-chart readability & manual copy; newlines are whitespace in JSON consumers.
+wrapStr(string s, int width) =>
+    if str.length(s) <= width
+        s
+    else
+        string out = ""
+        int i = 0
+        int col = 0
+        int L = str.length(s)
+        while i < L
+            out += str.substring(s, i, i + 1)
+            col += 1
+            // Insert newline at soft boundary; avoid splitting right after an escape backslash
+            if col >= width
+                // Prefer breaking after a comma or closing bracket/brace for readability
+                string ch = str.substring(s, i, i + 1)
+                if ch == "," or ch == "]" or ch == "}" or ch == "{" or ch == "["
+                    out += "\n"
+                    col := 0
+            i += 1
+        out
+
+// Create (or update) a single reusable label to display a wrapped payload.
+var label _payloadLabel = na
+showPayload(label existing, string payload, int width) =>
+    label next = existing
+    if not _showPayloadLabel
+        if not na(next)
+            label.delete(next)
+        next := na
+    else
+        string wrapped = wrapStr(payload, width)
+        if na(next)
+            next := label.new(bar_index, high, wrapped, style=label.style_label_left, textcolor=color.white, color=color.new(color.black, 70), size=size.small)
+        else
+            label.set_x(next, bar_index)
+            label.set_y(next, high)
+            label.set_text(next, wrapped)
+    next
+
+// =============================================
+// SHORT HORIZON FEATURE CALCULATIONS
+// =============================================
+// Short horizon metrics computed on execution timeframe
+float HV_ANNUAL_FACTOR = 15.8745
+
+hvCalc(int n) =>
+    float st = ta.stdev(math.log(close / close[1]), n)
+    n > 1 ? st * HV_ANNUAL_FACTOR : na
+
+// Approximate standard normal CDF (Abramowitz & Stegun 7.1.26)
+norm_cdf(float x) =>
+    float p = 0.2316419
+    float b1 = 0.319381530
+    float b2 = -0.356563782
+    float b3 = 1.781477937
+    float b4 = -1.821255978
+    float b5 = 1.330274429
+    float ax = math.abs(x)
+    float t = 1.0 / (1.0 + p * ax)
+    float poly = ((((b5 * t + b4) * t + b3) * t + b2) * t + b1) * t
+    float pdf = 0.3989422804014327 * math.exp(-0.5 * ax * ax)  // 1/sqrt(2*pi)
+    float cdf_pos = 1.0 - pdf * poly
+    x >= 0 ? cdf_pos : 1.0 - cdf_pos
+
+// Hyperbolic tangent helper (since math.tanh isn't available in Pine v6)
+tanh_safe(float x) =>
+    if na(x)
+        0.0
+    else
+        float xx = x
+        if xx > 7.0
+            0.999998
+        else if xx < -7.0
+            -0.999998
+        else
+            float e2 = math.exp(2.0 * xx)
+            (e2 - 1.0) / (e2 + 1.0)
+
+// Tiny humanizer for anomaly summary (compact, deterministic)
+anomalyHuman(float vol_z, float rng_z) =>
+    string dir_v = vol_z > 0 ? "high" : "low"
+    string dir_r = rng_z > 0 ? "wide" : "tight"
+    string s = 'anomaly: vol ' + dir_v + ' (' + str.tostring(vol_z, format.mintick) + 'σ), '
+    s += 'range ' + dir_r + ' (' + str.tostring(rng_z, format.mintick) + 'σ)'
+    s
+
+shortExecMetrics() =>
+    float c = close
+    float ch1_ = c - close[1]
+    float chN_ = na(close[lookbackShort]) ? na : c - close[lookbackShort]
+    float rngW = ta.highest(high, lookbackShort) - ta.lowest(low, lookbackShort)
+    float rngPct_ = c != 0.0 ? rngW / c : na
+    int smaLen_ = math.min(lookbackShort, 200)
+    int emaLen_ = math.min(math.round(lookbackShort * 0.6), 200)
+    float sma_ = ta.sma(c, smaLen_)
+    float ema_ = ta.ema(c, emaLen_)
+    int rsiLen_ = math.min(lookbackShort, 50)
+    float rsi_ = ta.rsi(c, rsiLen_)
+    int atrLen_ = math.min(lookbackShort, 100)
+    float atr_ = ta.atr(atrLen_)
+    float atrp_ = c != 0.0 ? atr_ / c : na
+    int hvLen_ = math.min(20, lookbackShort)
+    float hv20_ = hvCalc(hvLen_)
+    float hv100_ = lookbackShort >= 100 ? hvCalc(100) : na
+    int bbLen_ = math.min(lookbackShort, 50)
+    float bbBasis = ta.sma(c, bbLen_)
+    float bbDev = ta.stdev(c, bbLen_)
+    float bbUpper = bbBasis + 2.0 * bbDev
+    float bbLower = bbBasis - 2.0 * bbDev
+    float bbp_ = (bbUpper - bbLower) != 0.0 ? (c - bbLower) / (bbUpper - bbLower) : na
+    int volRelLen_ = math.min(lookbackShort, 100)
+    float volSMA_ = ta.sma(volume, volRelLen_)
+    float vrel_ = volSMA_ != 0.0 ? volume / volSMA_ : na
+    int hh_ = 0
+    int hl_ = 0
+    int lh_ = 0
+    int ll_ = 0
+    int j = 1
+    while j <= lookbackShort and j < bar_index
+        float cNow = close[j]
+        float cPrev = close[j + 1]
+        if cNow > cPrev
+            hh_ += high[j] >= high[j + 1] ? 1 : 0
+            hl_ += low[j] >= low[j + 1] ? 1 : 0
+        else if cNow < cPrev
+            lh_ += high[j] <= high[j + 1] ? 1 : 0
+            ll_ += low[j] <= low[j + 1] ? 1 : 0
+        j += 1
+    bool bkU_ = c >= ta.highest(high, lookbackShort)
+    bool bkD_ = c <= ta.lowest(low, lookbackShort)
+    float lr = ta.linreg(c, lookbackShort, 0)
+    float lr1 = ta.linreg(c[1], lookbackShort, 0)
+    float slope_ = na
+    if bar_index > lookbackShort
+        float rawSlope = lr - lr1
+        slope_ := c != 0.0 ? rawSlope / c : na
+    float fibLo_ = ta.lowest(low, lookbackShort)
+    float fibHi_ = ta.highest(high, lookbackShort)
+    int adxLen_ = 14
+    float upMove = high - high[1]
+    float downMove = low[1] - low
+    float plusDM = (upMove > 0 and upMove > downMove) ? upMove : 0
+    float minusDM = (downMove > 0 and downMove > upMove) ? downMove : 0
+    float tr = ta.tr(true)
+    float plusDMAvg = ta.rma(plusDM, adxLen_)
+    float minusDMAvg = ta.rma(minusDM, adxLen_)
+    float trAvg = ta.rma(tr, adxLen_)
+    float diPlus_ = trAvg != 0 ? 100 * plusDMAvg / trAvg : 0
+    float diMinus_ = trAvg != 0 ? 100 * minusDMAvg / trAvg : 0
+    float dx = (diPlus_ + diMinus_) != 0 ? 100 * math.abs(diPlus_ - diMinus_) / (diPlus_ + diMinus_) : 0
+    float adx_ = ta.rma(dx, adxLen_)
+    float vwap_ = ta.vwap
+    float vwapDist_ = c != 0.0 ? (c - vwap_) / c : na
+    float obvDelta = close > close[1] ? volume : close < close[1] ? -volume : 0
+    float obv_ = ta.cum(obvDelta)
+    float obvSlope_ = ta.linreg(obv_, lookbackShort, 0) - ta.linreg(obv_[1], lookbackShort, 0)
+    // === Phase 2 anomaly metrics ===
+    int anomLen = 20
+    float rngBar = high - low
+    float volMean = ta.sma(volume, anomLen)
+    float volStd  = ta.stdev(volume, anomLen)
+    float rngMean = ta.sma(rngBar, anomLen)
+    float rngStd  = ta.stdev(rngBar, anomLen)
+
+    float vol_z = not na(volMean) and volStd != 0 ? (volume - volMean) / volStd : na
+    float rng_z = not na(rngMean) and rngStd != 0 ? (rngBar - rngMean) / rngStd : na
+    int anomaly = (not na(vol_z) and math.abs(vol_z) > 2) or (not na(rng_z) and math.abs(rng_z) > 2) ? 1 : 0
+
+    [c, ch1_, chN_, rngW, rngPct_, sma_, ema_, rsi_, atr_, atrp_, hv20_, hv100_, bbp_, vrel_, hh_, hl_, lh_, ll_, bkU_, bkD_, slope_, fibLo_, fibHi_, adx_, diPlus_, diMinus_, vwap_, vwapDist_, obv_, obvSlope_, vol_z, rng_z, anomaly]
+
+[close_, ch1, chN, rngWindow, rngPct, smaVal, emaVal, rsiVal, atrVal, atrPct, hv20, hv100, bbp, vrel, hhRaw, hlRaw, lhRaw, llRaw, bkU, bkD, slope, fibLo, fibHi, adxVal, diPlusVal, diMinusVal, vwapVal, vwapDist, obvVal, obvSlope, vol_z, rng_z, anomaly] = request.security(syminfo.tickerid, _execTF, shortExecMetrics(), barmerge.gaps_on, barmerge.lookahead_off)
+
+int hh = int(hhRaw)
+int hl = int(hlRaw)
+int lh = int(lhRaw)
+int ll = int(llRaw)
+
+// === Anomaly severity from z-scores ===
+float z_abs = math.max(math.abs(vol_z), math.abs(rng_z))
+int anomaly_sev = na(z_abs) ? 0 : z_abs >= 1.5 ? 2 : z_abs >= 0.8 ? 1 : 0
+
+// === Phase-2 standardized z-scores (100-bar) ===
+zScoreSeries(float src, int len) =>
+    float m = ta.sma(src, len)
+    float sd = ta.stdev(src, len)
+    sd != 0 ? (src - m) / sd : na
+
+float volZ100 = request.security(syminfo.tickerid, _execTF, zScoreSeries(ta.tr(true), 100), barmerge.gaps_on, barmerge.lookahead_off)
+float rngZ100 = request.security(syminfo.tickerid, _execTF, zScoreSeries(high - low, 100), barmerge.gaps_on, barmerge.lookahead_off)
+
+// === VP-lite (close-binning) on execution TF ===
+vpLite(int len, int bins, float vaPct) =>
+    float pMin = ta.lowest(low, len)
+    float pMax = ta.highest(high, len)
+    float pRange = pMax - pMin
+    float binSize = pRange > 0 ? math.max(syminfo.mintick, pRange / bins) : syminfo.mintick
+    int nEff = pRange > 0 ? int(math.ceil(pRange / binSize)) : 1
+    nEff := math.max(1, math.min(nEff, bins))
+    float totalVol = 0.0
+    float pocPrice = na
+    float valPrice = na
+    float vahPrice = na
+    // Build histogram if range>0
+    if pRange > 0
+        float[] hist = array.new_float(nEff, 0.0)
+        int j = 0
+        while j < len and j < bar_index
+            float c = close[j]
+            float v = volume[j]
+            int idx = int(math.floor((c - pMin) / binSize))
+            idx := math.min(math.max(idx, 0), nEff - 1)
+            float cur = array.get(hist, idx)
+            array.set(hist, idx, cur + v)
+            totalVol += v
+            j += 1
+        if totalVol > 0.0
+            int k = 0
+            float vmax = array.get(hist, 0)
+            int i = 1
+            while i < nEff
+                float hv = array.get(hist, i)
+                if hv > vmax
+                    vmax := hv
+                    k := i
+                i += 1
+            pocPrice := pMin + (k + 0.5) * binSize
+            float target = totalVol * vaPct
+            float cum = array.get(hist, k)
+            int left = k
+            int right = k
+            while cum < target and (left > 0 or right < nEff - 1)
+                float volL = left > 0 ? array.get(hist, left - 1) : -1.0
+                float volR = right < nEff - 1 ? array.get(hist, right + 1) : -1.0
+                if volL >= volR and volL >= 0
+                    left -= 1
+                    cum += volL
+                else if volR >= 0
+                    right += 1
+                    cum += volR
+                else
+                    break
+            valPrice := pMin + left * binSize
+            vahPrice := pMin + (right + 1) * binSize
+    // Fallback for degenerate range/volume cases
+    if na(pocPrice)
+        pocPrice := close
+        valPrice := close
+        vahPrice := close
+    float atr_ = ta.atr(math.min(14, len))
+    float distNorm = atr_ != 0 ? (close - pocPrice) / atr_ : na
+    float inVAf = (close >= valPrice and close <= vahPrice) ? 1.0 : 0.0
+    [pocPrice, valPrice, vahPrice, distNorm, inVAf, float(nEff)]
+
+float vp_poc = na
+float vp_val = na
+float vp_vah = na
+float vp_dist = na
+float vp_inva = na
+float vp_n = na
+float vp_accept = na
+float vp_drift = na
+int   vp_count = na
+int   vp_denom = na
+var int vp_age = 0
+string vp_regime = na
+var float vp_count_acc = na
+float vp_quality = na
+// Compute raw VP series on exec TF, then assign based on toggle to avoid shadowing
+[vp_poc_raw, vp_val_raw, vp_vah_raw, vp_dist_raw, vp_inva_raw, vp_n_raw] = request.security(syminfo.tickerid, _execTF, vpLite(lookbackShort, _vpBins, _vpVaPct), barmerge.gaps_on, barmerge.lookahead_off)
+if _includeVP
+    vp_poc := vp_poc_raw
+    vp_val := vp_val_raw
+    vp_vah := vp_vah_raw
+    vp_dist := vp_dist_raw
+    vp_inva := vp_inva_raw
+    vp_n := vp_n_raw
+    vp_accept := ta.sma(vp_inva, _vpAcceptN)
+    vp_drift := _vpDriftW > 1 ? (ta.linreg(vp_poc, _vpDriftW, 0) - ta.linreg(vp_poc, _vpDriftW, 1)) : na
+    // Acceptance raw components and regime
+    vp_age := math.min(_vpAcceptN, nz(vp_age[1]) + 1)
+    // Sliding window sum of in-VA over _vpAcceptN bars without ta.sum
+    vp_count_acc := nz(vp_count_acc[1]) + nz(vp_inva, 0.0) - nz(vp_inva[_vpAcceptN], 0.0)
+    vp_count := int(math.max(0.0, vp_count_acc))
+    vp_denom := vp_age
+    vp_regime := (not na(vp_accept) and not na(vp_dist) and vp_accept >= 0.55 and math.abs(vp_dist) <= 1.0) ? "balance" : "discovery"
+    // vp_quality = clamp01((n_bins_eff / bins) * acceptance_ratio)
+    float nb = not na(vp_n) and _vpBins > 0 ? vp_n / _vpBins : na
+    float raw_q = not na(nb) and not na(vp_accept) ? nb * vp_accept : na
+    vp_quality := na(raw_q) ? na : math.max(0.0, math.min(1.0, raw_q))
+else
+    vp_poc := na
+    vp_val := na
+    vp_vah := na
+    vp_dist := na
+    vp_inva := na
+    vp_n := na
+    vp_accept := na
+    vp_drift := na
+    vp_age := 0
+    vp_count := na
+    vp_denom := na
+    vp_regime := na
+    vp_count_acc := na
+    vp_quality := na
+
+// === Macro Context (daily cadence, optional) ===
+// Implements: DXY trend (EMA20/EMA100 + EMA3 slope, 2-day hysteresis),
+// VIX risk mode (thresholds + persistence), BTC↔DXY corr (30/90), composite score/state,
+// asof timestamp (daily), and confidence heuristic. Intraday bars reuse last daily value.
+string macro_dxy_state = na
+string macro_risk_mode = na
+string macro_state = na
+float  macro_corr30 = na
+float  macro_corr90 = na
+int    macro_asof_sec = na
+string macro_confidence = na
+var int macro_score_comp = na
+if _includeMacro
+    // Daily series (held constant intraday)
+    float d_dxy = request.security(_dxySymbol, "D", close, barmerge.gaps_on, barmerge.lookahead_off)
+    float d_vix = request.security(_vixSymbol, "D", close, barmerge.gaps_on, barmerge.lookahead_off)
+    float d_btc = request.security(_btcSymbol, "D", close, barmerge.gaps_on, barmerge.lookahead_off)
+    int   d_time = request.security(syminfo.tickerid, "D", time, barmerge.gaps_on, barmerge.lookahead_off)
+    macro_asof_sec := na(d_time) ? na : int(d_time / 1000)
+    // DXY trend features (computed on daily TF to avoid intraday drift)
+    float dxy_ma = request.security(_dxySymbol, "D", ta.ema(close, 20), barmerge.gaps_on, barmerge.lookahead_off)
+    float dxy_ma_slow = request.security(_dxySymbol, "D", ta.ema(close, 100), barmerge.gaps_on, barmerge.lookahead_off)
+    float dxy_ema3 = request.security(_dxySymbol, "D", ta.ema(close, 3), barmerge.gaps_on, barmerge.lookahead_off)
+    float dxy_slope = dxy_ema3 - dxy_ema3[1]
+    bool dxy_up = not na(dxy_ma) and not na(dxy_ma_slow) and not na(dxy_slope) and (dxy_ma > dxy_ma_slow and dxy_slope > 0)
+    bool dxy_dn = not na(dxy_ma) and not na(dxy_ma_slow) and not na(dxy_slope) and (dxy_ma < dxy_ma_slow and dxy_slope < 0)
+    macro_dxy_state := (dxy_up and dxy_up[1]) ? "bullish" : (dxy_dn and dxy_dn[1]) ? "bearish" : "neutral"
+    // VIX risk mode with persistence (daily)
+    float vix_ma = request.security(_vixSymbol, "D", ta.ema(close, 20), barmerge.gaps_on, barmerge.lookahead_off)
+    bool risk_off_c = not na(d_vix) and ((d_vix > 24) or (not na(vix_ma) and d_vix > vix_ma * 1.10 and d_vix > d_vix[1] and d_vix[1] > d_vix[2]))
+    bool risk_on_c  = not na(d_vix) and not na(vix_ma) and (d_vix < 18 and d_vix < vix_ma)
+    macro_risk_mode := (risk_off_c and risk_off_c[1]) ? "off" : (risk_on_c and risk_on_c[1] and risk_on_c[2]) ? "on" : "neutral"
+    // Rolling correlations (computed on daily TF to ensure correct window)
+    macro_corr30 := request.security(_btcSymbol, "D", ta.correlation(close, request.security(_dxySymbol, "D", close, barmerge.gaps_on, barmerge.lookahead_off), 30), barmerge.gaps_on, barmerge.lookahead_off)
+    macro_corr90 := request.security(_btcSymbol, "D", ta.correlation(close, request.security(_dxySymbol, "D", close, barmerge.gaps_on, barmerge.lookahead_off), 90), barmerge.gaps_on, barmerge.lookahead_off)
+    // Composite score (−2 … +2)
+    int scoreComp = 0
+    scoreComp += macro_dxy_state == "bullish" ? -1 : macro_dxy_state == "bearish" ? 1 : 0
+    scoreComp += macro_risk_mode == "off" ? -1 : macro_risk_mode == "on" ? 1 : 0
+    scoreComp += (not na(macro_corr30) and macro_corr30 < -0.5 and macro_dxy_state == "bullish") ? -1 : 0
+    scoreComp := scoreComp < -2 ? -2 : scoreComp > 2 ? 2 : scoreComp
+    macro_state := scoreComp <= -2 ? "risk_off" : scoreComp == -1 ? "caution" : scoreComp == 0 ? "neutral" : "supportive"
+    // Confidence heuristic
+    bool have_dxy = not na(d_dxy)
+    bool have_vix = not na(d_vix)
+    bool have_btc = not na(d_btc)
+    int present = (have_dxy ? 1 : 0) + (have_vix ? 1 : 0) + (have_btc ? 1 : 0)
+    macro_confidence := (present == 3 and not na(macro_corr30) and not na(macro_corr90)) ? "high" : (present >= 2 ? "med" : "low")
+    // Persist score for JSON emission
+    macro_score_comp := scoreComp
+
+var float srShort_price_0 = na
+var float srShort_str_0 = na
+// Persistent capture of anomaly first_seen (UNIX ms)
+var int first_seen_ts = na
+// =============================================
+// MEDIUM (60m) & LONG (1D) AGGREGATES
+// =============================================
+// We'll compute a reduced feature set: close, ch1, chN (using medium/long tailored lookbacks), rng, rngp, sma, ema, rsi, atr, atrp, hv20
+
+aggrFeat(string tf, int lbShort, int lbMed, int lbLong) =>
+    float c1 = close
+    float ch1_ = c1 - close[1]
+    float chN_ = na(close[lbShort]) ? na : c1 - close[lbShort]
+    float rngW = ta.highest(high, lbShort) - ta.lowest(low, lbShort)
+    float rngPct_ = c1 != 0 ? rngW / c1 : na
+    float sma_ = ta.sma(c1, math.min(lbShort, 200))
+    float ema_ = ta.ema(c1, math.min(math.round(lbShort * 0.6), 200))
+    float rsi_ = ta.rsi(c1, math.min(lbShort, 50))
+    float atr_ = ta.atr(math.min(lbShort, 100))
+    float atrp_ = c1 != 0 ? atr_ / c1 : na
+    float hv20_ = hvCalc(math.min(20, lbShort))
+    [c1, ch1_, chN_, rngW, rngPct_, sma_, ema_, rsi_, atr_, atrp_, hv20_]
+
+float m_c = na
+float m_ch1 = na
+float m_chN = na
+float m_rng = na
+float m_rngp = na
+float m_sma = na
+float m_ema = na
+float m_rsi = na
+float m_atr = na
+float m_atrp = na
+float m_hv20 = na
+
+float l_c = na
+float l_ch1 = na
+float l_chN = na
+float l_rng = na
+float l_rngp = na
+float l_sma = na
+float l_ema = na
+float l_rsi = na
+float l_atr = na
+float l_atrp = na
+float l_hv20 = na
+
+// temp result variables are introduced later via tuple destructuring inside condition blocks
+
+
+if includeMediumEff
+    [med_c_res, med_ch1_res, med_chN_res, med_rng_res, med_rngp_res, med_sma_res, med_ema_res, med_rsi_res, med_atr_res, med_atrp_res, med_hv20_res] = request.security(syminfo.tickerid, "60", aggrFeat("60", lookbackMedium, lookbackMedium, lookbackLong))
+    m_c := med_c_res
+    m_ch1 := med_ch1_res
+    m_chN := med_chN_res
+    m_rng := med_rng_res
+    m_rngp := med_rngp_res
+    m_sma := med_sma_res
+    m_ema := med_ema_res
+    m_rsi := med_rsi_res
+    m_atr := med_atr_res
+    m_atrp := med_atrp_res
+    m_hv20 := med_hv20_res
+else
+    m_c := na
+    m_ch1 := na
+    m_chN := na
+    m_rng := na
+    m_rngp := na
+    m_sma := na
+    m_ema := na
+    m_rsi := na
+    m_atr := na
+    m_atrp := na
+    m_hv20 := na
+if includeLongEff
+    [long_c_res, long_ch1_res, long_chN_res, long_rng_res, long_rngp_res, long_sma_res, long_ema_res, long_rsi_res, long_atr_res, long_atrp_res, long_hv20_res] = request.security(syminfo.tickerid, "D", aggrFeat("D", lookbackLong, lookbackLong, lookbackLong))
+    l_c := long_c_res
+    l_ch1 := long_ch1_res
+    l_chN := long_chN_res
+    l_rng := long_rng_res
+    l_rngp := long_rngp_res
+    l_sma := long_sma_res
+    l_ema := long_ema_res
+    l_rsi := long_rsi_res
+    l_atr := long_atr_res
+    l_atrp := long_atrp_res
+    l_hv20 := long_hv20_res
+else
+    l_c := na
+    l_ch1 := na
+    l_chN := na
+    l_rng := na
+    l_rngp := na
+    l_sma := na
+    l_ema := na
+    l_rsi := na
+    l_atr := na
+    l_atrp := na
+    l_hv20 := na
+// =============================================
+// PAIR CORRELATION CONTEXT
+// =============================================
+// === Pair corr (compute readiness first) ===
+float pairCloseExec = str.length(_pairSymbol) > 0 ? request.security(_pairSymbol, _execTF, close, barmerge.gaps_on, barmerge.lookahead_off) : na
+float pairCorrRaw = ta.correlation(close_, pairCloseExec, pairCorrWin)
+
+bool pairReady = str.length(_pairSymbol) > 0 and pairCorrWin <= bar_index and not na(pairCorrRaw)
+float pairCorr = pairReady ? pairCorrRaw : na
+
+// === Only now use pairReady for spread/z ===
+float spread = pairReady and pairCloseExec != 0.0 ? close_ / pairCloseExec : na
+float spreadMean = ta.sma(spread, pairCorrWin)
+float spreadStd = ta.stdev(spread, pairCorrWin)
+float spreadZ = not na(spread) and spreadStd != 0.0 ? (spread - spreadMean) / spreadStd : na
+int pairDiverge = (bkU and pairCorr > 0.4 and spreadZ < -1.0) or (bkD and pairCorr > 0.4 and spreadZ > 1.0) ? 1 : 0
+
+float swHi = ta.highest(high, math.max(1, lookbackShort / 2))
+float swLo = ta.lowest(low, math.max(1, lookbackShort / 2))
+float breakHigh = ta.highest(high, lookbackShort)
+float breakLow  = ta.lowest(low, lookbackShort)
+float lastBreakLevel = bkU ? breakHigh : bkD ? breakLow : na
+
+float atrMean = ta.sma(atrPct, math.max(lookbackShort, 20))
+float atrStd = ta.stdev(atrPct, math.max(lookbackShort, 20))
+float atrNorm = atrStd != 0.0 ? (atrPct - atrMean) / atrStd : 0.0
+float atrPctRank = norm_cdf(atrNorm)
+int secondsInDay = int(time % 86400000) / 1000
+string todBucket = secondsInDay < 28800 ? "asia" : secondsInDay < 57600 ? "eu" : "us"
+
+float regScore = 0.0
+regScore += tanh_safe(slope * 1000.0) * 25.0
+regScore += (rsiVal - 50.0) / 50.0 * 20.0
+regScore += (math.min(adxVal, 40.0) / 40.0) * 25.0
+regScore += ((bbp - 0.5) * 2.0) * 10.0
+regScore += tanh_safe(obvSlope / 1000000.0) * 20.0
+regScore := math.max(0.0, math.min(100.0, 50.0 + regScore))
+
+// === Rising-edge first_seen capture ===
+bool is_rising = anomaly == 1 and nz(anomaly[1], 0) == 0
+if is_rising
+    first_seen_ts := time
+else if anomaly == 0
+    first_seen_ts := na
+
+bool longOk = bkU and adxVal > 18 and rsiVal > 52 and vwapDist >= -0.002
+bool shortOk = bkD and adxVal > 18 and rsiVal < 48 and vwapDist <= 0.002
+float t1 = not na(fibHi) ? fibHi : smaVal
+float t2 = not na(smaVal) and not na(atrVal) ? smaVal + (atrVal * 1.5) : na
+float s1 = not na(fibLo) ? fibLo : emaVal
+
+float riskRU = atrPct
+float stopATR = 1.2
+float suggStop = atrVal * stopATR
+
+bool calcOK = not na(close_) and not na(rsiVal)
+
+// === Warnings collector ===
+string warnList = ""
+warnList := math.abs(atrPct) < MIN_EMIT_ABS ? (str.length(warnList) > 0 ? warnList + ',"atrp_underflow"' : '"atrp_underflow"') : warnList
+warnList := (includeFibEff and (na(fibLo) or na(fibHi))) ? (str.length(warnList) > 0 ? warnList + ',"fib_incomplete"' : '"fib_incomplete"') : warnList
+warnList := (str.length(_pairSymbol) > 0 and not pairReady) ? (str.length(warnList) > 0 ? warnList + ',"pair_not_ready"' : '"pair_not_ready"') : warnList
+
+string cfgSig = str.format("{0}|{1}|{2}|{3}|{4}", _execTF, _payloadProf, _scanMode, includeMediumEff ? 1 : 0, includeLongEff ? 1 : 0)
+int profileCode = _payloadProf == PROFILE_LEAN ? 0 : _payloadProf == PROFILE_BALANCED ? 1 : 2
+int scanCode = _scanMode == SCAN_SHORT ? 0 : _scanMode == SCAN_MEDIUM ? 1 : 2
+int tfCode = int(execTF_minutes)
+int cfgHash = tfCode * 10000 + profileCode * 100 + scanCode * 10 + (includeMediumEff ? 2 : 0) + (includeLongEff ? 1 : 0)
+
+bool intentLongState = longOk
+bool intentShortState = shortOk
+// stateChanged depends on 'regime', which is defined later. Compute it after regime classification.
+
+// =============================================
+// RISK METRICS & REGIME CLASSIFICATION
+// =============================================
+// atrPct already computed as atrPct; dd14 = (peak_close_14 - close)/peak_close_14
+int ddLen = 14
+float peak14 = ta.highest(close_, ddLen)
+float dd14 = peak14 != 0 ? (peak14 - close_) / peak14 : na
+
+// Regime heuristics using slope, rsi, breakout flags, structure counts
+string regime = "range"
+bool upCond = slope > 0 and rsiVal > 55
+bool downCond = slope < 0 and rsiVal < 45
+bool pullbackUp = upCond and rsiVal < 50
+bool pullbackDown = downCond and rsiVal > 50
+if upCond
+    regime := pullbackUp ? "uptrend_pullback" : "uptrend"
+if downCond
+    regime := pullbackDown ? "downtrend_pullback" : "downtrend"
+if bkU and upCond
+    regime := "uptrend_breakout"
+if bkD and downCond
+    regime := "downtrend_breakdown"
+
+// Now that 'regime' is known, compute state change flags and gate rich extras
+bool stateChanged = regime != lastRegime or (intentLongState ? 1 : 0) != lastIntentLong or (intentShortState ? 1 : 0) != lastIntentShort or (bkU ? 1 : 0) != lastBreakUp or (bkD ? 1 : 0) != lastBreakDown
+richExtrasEnabled := not (_richStateOnly and _payloadProf == PROFILE_RICH and not stateChanged)
+
+// === Per-horizon regimes (simple, robust) ===
+string regShort  = slope > 0 and rsiVal > 50 ? "up" : slope < 0 and rsiVal < 50 ? "down" : "mixed"
+
+// Medium EMA(34) on 60m
+float emaMed34 = includeMediumEff ? request.security(syminfo.tickerid, "60", ta.ema(close, 34)) : na
+string regMediumS = includeMediumEff ? (m_c < emaMed34 ? "down" : "up") : na
+
+// Long EMA(34) on D
+float emaLong34 = includeLongEff ? request.security(syminfo.tickerid, "D", ta.ema(close, 34)) : na
+string regLongS = includeLongEff ? (l_c < emaLong34 ? "down" : "up") : na
+
+string regConsensus = na(regMediumS) or na(regLongS) ? regShort : (regShort == regMediumS and regShort == regLongS ? regShort : "mixed")
+
+// =============================================
+// OPTIONAL SIGNALS (lightweight)
+// =============================================
+// bull_break: recent breakout with positive slope & RSI confirmation
+int bull_break = (bkU and slope > 0 and rsiVal > 55) ? 1 : 0
+// bear_break: recent breakdown with negative slope & RSI confirmation
+int bear_break = (bkD and slope < 0 and rsiVal < 45) ? 1 : 0
+// rev_prob: simple reversal probability heuristic (normalized 0..1)
+float rev_prob = na
+if regime == "uptrend_pullback" or regime == "downtrend_pullback"
+    rev_prob := 0.35
+else if regime == "uptrend_breakout" or regime == "downtrend_breakdown"
+    rev_prob := 0.15
+else if regime == "range"
+    rev_prob := 0.25
+rev_prob := not na(rev_prob) ? math.min(math.max(rev_prob, 0.0), 0.9) : na
+
+// =============================================
+// BARS RING BUFFER (exec timeframe only)
+// =============================================
+var int    barsCap = 0
+var int    barsCount = 0
+var int    barsHead = 0  // next write position
+var int    execBarsSeen = 0
+var int[]  arr_t = array.new_int()
+var float[] arr_o = array.new_float()
+var float[] arr_h = array.new_float()
+var float[] arr_l = array.new_float()
+var float[] arr_c = array.new_float()
+var float[] arr_v = array.new_float()
+
+int execTime = request.security(syminfo.tickerid, _execTF, time, barmerge.gaps_on, barmerge.lookahead_off)
+float execOpen = request.security(syminfo.tickerid, _execTF, open, barmerge.gaps_on, barmerge.lookahead_off)
+float execHigh = request.security(syminfo.tickerid, _execTF, high, barmerge.gaps_on, barmerge.lookahead_off)
+float execLow = request.security(syminfo.tickerid, _execTF, low, barmerge.gaps_on, barmerge.lookahead_off)
+float execClose = request.security(syminfo.tickerid, _execTF, close, barmerge.gaps_on, barmerge.lookahead_off)
+float execVolume = request.security(syminfo.tickerid, _execTF, volume, barmerge.gaps_on, barmerge.lookahead_off)
+bool newExecBar = ta.change(execTime) != 0
+bool seedExecBar = execBarsSeen == 0 and not na(execTime)
+int execTimeSecSeries = na(execTime) ? int(time / 1000) : int(execTime / 1000)
+float lagMS = not na(execTime) ? float(time - execTime) : na
+
+if barstate.isfirst
+    barsCap := barsExecEff
+    // Pre-allocate
+    int k = 0
+    while k < barsCap
+        array.push(arr_t, 0)
+        array.push(arr_o, na)
+        array.push(arr_h, na)
+        array.push(arr_l, na)
+        array.push(arr_c, na)
+        array.push(arr_v, na)
+        k += 1
+
+// Write current bar on confirmation
+if barstate.isconfirmed and (newExecBar or seedExecBar) and barsCap > 0 and not na(execClose)
+    int execTimeSec = execTimeSecSeries
+    array.set(arr_t, barsHead, execTimeSec)
+    array.set(arr_o, barsHead, execOpen)
+    array.set(arr_h, barsHead, execHigh)
+    array.set(arr_l, barsHead, execLow)
+    array.set(arr_c, barsHead, execClose)
+    array.set(arr_v, barsHead, execVolume)
+    barsHead += 1
+    if barsHead >= barsCap
+        barsHead := 0
+    if barsCount < barsCap
+        barsCount += 1
+    execBarsSeen += 1
+
+buildBarsJson(int precisionP) =>
+    string out = "["
+    int total = barsCount
+    if total > 0
+        int startSlot = barsCount == barsCap ? barsHead : 0
+        int pageSize = math.max(_barsPerPage, 1)
+        int compress = math.max(_barsCompress, 1)
+        int pageIndex = math.max(_barsPage, 1) - 1
+        int pageEndIdx = total - pageIndex * pageSize
+        if pageEndIdx < 0
+            pageEndIdx := 0
+        int pageStartIdx = math.max(0, pageEndIdx - pageSize)
+        int emitted = 0
+        int i = pageStartIdx
+        while i < pageEndIdx and i < total
+            int pos = (startSlot + i) % barsCap
+            if emitted > 0
+                out += ","
+            int t_ = array.get(arr_t, pos)
+            float o_ = array.get(arr_o, pos)
+            float h_ = array.get(arr_h, pos)
+            float l_ = array.get(arr_l, pos)
+            float c_ = array.get(arr_c, pos)
+            float v_ = array.get(arr_v, pos)
+            out += "[" + str.tostring(t_) + "," + str.tostring(o_, format.mintick) + "," + str.tostring(h_, format.mintick) + "," + str.tostring(l_, format.mintick) + "," + str.tostring(c_, format.mintick) + "," + str.tostring(v_) + "]"
+            emitted += 1
+            i += compress
+    out + "]"
+
+// =============================================
+// Main (placeholder)
+// =============================================
+if barstate.islast
+    // For now just emit a stub JSON (later replaced by full builder) when debug.
+    if _debugMode and barstate.isconfirmed
+        string uid = syminfo.ticker + "-" + _execTF + "-" + str.tostring(execTimeSecSeries)
+        string stub = '{"schema":"' + SCHEMA_TAG + '","ver":' + str.tostring(SCHEMA_VER) + ',"uid":"' + uid + '","s":"' + syminfo.ticker + '","tf":"' + _execTF + '","t":' + str.tostring(execTimeSecSeries) + '}'
+        label.new(bar_index, high, text=stub, style=label.style_label_left, size=size.tiny)
+        lastPayload := stub
+        lastUID := uid
+        // Also show wrapped payload if user enabled the option.
+        _payloadLabel := showPayload(_payloadLabel, stub, _wrapWidth)
+    else if _showPayloadLabel and barstate.isconfirmed and str.length(lastPayload) > 0
+        // Re-render last payload (e.g., when switching panes or resizing)
+        _payloadLabel := showPayload(_payloadLabel, lastPayload, _wrapWidth)
+
+// =============================================
+// JSON BUILDER & ALERT EMISSION
+// =============================================
+numStr(float v) => roundTrim(v, precisionEff)
+
+// Pushes a key:value pair to arr if valStr is non-empty
+addKV(string[] arr, string key, string valStr) =>
+    if str.length(valStr) > 0
+        array.push(arr, '"' + key + '":' + valStr)
+
+// Join an array of strings with a delimiter (since str.join isn't available)
+joinStrings(string[] arr, string delim) =>
+    int n = array.size(arr)
+    string out = ''
+    int i = 0
+    while i < n
+        if i > 0
+            out += delim
+        out += array.get(arr, i)
+        i += 1
+    out
+
+emitShortFeat() =>
+    string[] feat = array.new_string()
+    // Core floats
+    addKV(feat, 'sma',  numStr(smaVal))
+    addKV(feat, 'ema',  numStr(emaVal))
+    addKV(feat, 'rsi',  numStr(rsiVal))
+    addKV(feat, 'atr',  numStr(atrVal))
+    string atrpLean = numStr(atrPct)
+    addKV(feat, 'atrp', str.length(atrpLean) > 0 ? atrpLean : '0')
+    if _payloadProf == PROFILE_RICH
+        addKV(feat, 'atrp_raw', str.tostring(atrPct))
+    if _payloadProf != PROFILE_LEAN and not na(hv20)
+        addKV(feat, 'hv20', numStr(hv20))
+    if _payloadProf == PROFILE_RICH and not na(hv20)
+        addKV(feat, 'hv20_raw', str.tostring(hv20))
+    if _payloadProf == PROFILE_RICH and not na(hv100)
+        addKV(feat, 'hv100', numStr(hv100))
+    addKV(feat, 'bbp',  numStr(bbp))
+    addKV(feat, 'vrel', numStr(vrel))
+    // Anomaly z-scores (if available)
+    if not na(vol_z)
+        addKV(feat, 'vol_z', numStr(vol_z))
+    if not na(rng_z)
+        addKV(feat, 'rng_z', numStr(rng_z))
+    // Boolean/int anomaly and severity
+    array.push(feat, '"anomaly":' + str.tostring(anomaly))
+    array.push(feat, '"anomaly_sev":' + str.tostring(anomaly_sev))
+    if anomaly == 1 and not na(first_seen_ts)
+        array.push(feat, '"first_seen":' + str.tostring(first_seen_ts))
+    // Structure & breaks
+    array.push(feat, '"hh":' + str.tostring(hh))
+    array.push(feat, '"hl":' + str.tostring(hl))
+    array.push(feat, '"lh":' + str.tostring(lh))
+    array.push(feat, '"ll":' + str.tostring(ll))
+    array.push(feat, '"bkU":' + str.tostring(bkU ? 1 : 0))
+    array.push(feat, '"bkD":' + str.tostring(bkD ? 1 : 0))
+    // Optional slope
+    if not na(slope)
+        string slopeLean = numStr(slope)
+        addKV(feat, 'slope', str.length(slopeLean) > 0 ? slopeLean : '0')
+        if _payloadProf == PROFILE_RICH
+            addKV(feat, 'slope_raw', str.tostring(slope))
+    // Trend & flow extras
+    addKV(feat, 'adx',    numStr(adxVal))
+    addKV(feat, 'di+',    numStr(diPlusVal))
+    addKV(feat, 'di-',    numStr(diMinusVal))
+    addKV(feat, 'vwap',   numStr(vwapVal))
+    addKV(feat, 'vwapd',  numStr(vwapDist))
+    addKV(feat, 'obvS',   numStr(obvSlope))
+    '"feat":{' + joinStrings(feat, ',') + '}'
+
+emitShortHdr() =>
+    '"hdr":{' + '"c":' + numStr(close_) + ',"ch1":' + numStr(ch1) + (not na(chN) ? ',"chN":' + numStr(chN) : '') + ',"rng":' + numStr(rngWindow) + ',"rngp":' + numStr(rngPct) + '}'
+
+emitShortLevels() =>
+    string s = '"levels":{' + '"sr":['
+    bool first = true
+    if not na(srShort_price_0)
+        s += '[' + numStr(srShort_price_0) + ',' + numStr(srShort_str_0) + ']'
+        first := false
+    s += ']'
+    if includeFibEff and not na(fibLo) and not na(fibHi)
+        s += ',"fib":[' + numStr(fibLo) + ',' + numStr(fibHi) + ']'
+    if not na(swLo) and not na(swHi)
+        s += ',"sw":[' + numStr(swLo) + ',' + numStr(swHi) + ']'
+    if not na(lastBreakLevel)
+        string brType = bkU ? '"HH"' : bkD ? '"LL"' : 'null'
+        int tSecBr = execTimeSecSeries
+        s += ',"last_break":{'
+        s += '"type":' + brType + ',"price":' + numStr(lastBreakLevel) + ',"t":' + str.tostring(tSecBr)
+        s += '}'
+    s + '}'
+
+emitMedium() =>
+    if not includeMediumEff
+        ''
+    else
+        string s = '"medium":{"tf":"60","hdr":{"c":' + numStr(m_c)
+        s += ',"ch1":' + numStr(m_ch1)
+        if not na(m_chN)
+            s += ',"chN":' + numStr(m_chN)
+        s += ',"rng":' + numStr(m_rng)
+        s += ',"rngp":' + numStr(m_rngp)
+        s += '},"feat":{"sma":' + numStr(m_sma)
+        s += ',"ema":' + numStr(m_ema)
+        s += ',"rsi":' + numStr(m_rsi)
+        s += ',"atr":' + numStr(m_atr)
+        s += ',"atrp":' + numStr(m_atrp)
+        if not na(m_hv20)
+            s += ',"hv20":' + numStr(m_hv20)
+        s += '}}'
+        s
+
+emitLong() =>
+    if not includeLongEff
+        ''
+    else
+        string s = '"long":{"tf":"D","hdr":{"c":' + numStr(l_c)
+        s += ',"ch1":' + numStr(l_ch1)
+        if not na(l_chN)
+            s += ',"chN":' + numStr(l_chN)
+        s += ',"rng":' + numStr(l_rng)
+        s += ',"rngp":' + numStr(l_rngp)
+        s += '},"feat":{"sma":' + numStr(l_sma)
+        s += ',"ema":' + numStr(l_ema)
+        s += ',"rsi":' + numStr(l_rsi)
+        s += ',"atr":' + numStr(l_atr)
+        s += ',"atrp":' + numStr(l_atrp)
+        if not na(l_hv20)
+            s += ',"hv20":' + numStr(l_hv20)
+        s += '}}'
+        s
+
+// ==========================
+// Additional emitters to reduce external usage in buildPayload
+// ==========================
+emitMetaBlock() =>
+    string metaStr = ',"meta":{"profile":"' + _payloadProf + '","scan":"' + _scanMode + '","precisionEff":' + str.tostring(precisionEff)
+    metaStr += ',"source":"TradingView"'
+    metaStr += ',"exec_tf":"' + _execTF + '"'
+    metaStr += ',"tz":"' + syminfo.timezone + '"'
+    metaStr += ',"schema":"v1"'
+    string vz = numStr(vol_z)
+    if str.length(vz) == 0
+        vz := 'null'
+    string rz = numStr(rng_z)
+    if str.length(rz) == 0
+        rz := 'null'
+    string anFlag = anomaly == 1 ? 'true' : 'false'
+    metaStr += ',"anomaly":{"flag":' + anFlag + ',"vol_z":' + vz + ',"rng_z":' + rz + ',"sev":' + str.tostring(anomaly_sev)
+    if anomaly == 1 and not na(first_seen_ts)
+        metaStr += ',"first_seen":' + str.tostring(first_seen_ts)
+    metaStr += '}'
+    if _includeVP
+        metaStr += ',"vp_note":"approximate VAP from OHLCV (close-binning)"'
+    if _includeHumanMeta and not na(vol_z) and not na(rng_z)
+        string humanMeta = anomalyHuman(vol_z, rng_z)
+        string humanMetaSan = str.replace(str.replace(str.replace(humanMeta, '"', "'"), "\r", " "), "\n", " ")
+        metaStr += ',"human":"' + humanMetaSan + '"'
+    metaStr += '}'
+    metaStr
+
+emitRegBlock() =>
+    string regMediumJson = includeMediumEff and not na(regMediumS) ? '"' + regMediumS + '"' : 'null'
+    string regLongJson = includeLongEff and not na(regLongS) ? '"' + regLongS + '"' : 'null'
+    ',"reg":{"short":"' + regShort + '","medium":' + regMediumJson + ',"long":' + regLongJson + ',"consensus":"' + regConsensus + '"}'
+
+emitMacroBlock() =>
+    if _includeMacro
+        string macroStr = ',"macro":{'
+        macroStr += '"state":' + (na(macro_state) ? 'null' : '"' + macro_state + '"')
+        macroStr += ',"dxy_trend":' + (na(macro_dxy_state) ? 'null' : '"' + macro_dxy_state + '"')
+        macroStr += ',"risk_mode":' + (na(macro_risk_mode) ? 'null' : '"' + macro_risk_mode + '"')
+        string c30 = numStr(macro_corr30)
+        if str.length(c30) == 0 and not na(macro_corr30)
+            c30 := str.tostring(macro_corr30)
+        string c90 = numStr(macro_corr90)
+        if str.length(c90) == 0 and not na(macro_corr90)
+            c90 := str.tostring(macro_corr90)
+        macroStr += ',"corr":{'
+        macroStr += '"btc_dxy_30":' + (str.length(c30) > 0 ? c30 : 'null')
+        macroStr += ',"btc_dxy_90":' + (str.length(c90) > 0 ? c90 : 'null')
+        macroStr += '}'
+        macroStr += ',"score":' + (na(macro_score_comp) ? 'null' : str.tostring(macro_score_comp))
+        macroStr += ',"asof":' + (na(macro_asof_sec) ? 'null' : str.tostring(macro_asof_sec))
+        macroStr += ',"confidence":' + (na(macro_confidence) ? '"low"' : '"' + macro_confidence + '"')
+        macroStr += '}'
+        macroStr
+    else
+        ''
+
+emitVpBlock() =>
+    if _includeVP and not na(vp_poc)
+        string pocStr = numStr(vp_poc)
+        if str.length(pocStr) == 0
+            pocStr := str.tostring(vp_poc)
+        string valStr = numStr(vp_val)
+        if str.length(valStr) == 0
+            valStr := str.tostring(vp_val)
+        string vahStr = numStr(vp_vah)
+        if str.length(vahStr) == 0
+            vahStr := str.tostring(vp_vah)
+        string distStr = numStr(vp_dist)
+        if str.length(distStr) == 0
+            distStr := str.tostring(vp_dist)
+        string invaStr = numStr(vp_inva)
+        if str.length(invaStr) == 0
+            invaStr := str.tostring(vp_inva)
+        string accStr = numStr(vp_accept)
+        if str.length(accStr) == 0 and not na(vp_accept)
+            accStr := str.tostring(vp_accept)
+        string driftStr = numStr(vp_drift)
+        if str.length(driftStr) == 0 and not na(vp_drift)
+            driftStr := str.tostring(vp_drift)
+        string vpStr = ',"vp":{' + '"tf":"' + _execTF + '",' + '"method":"close_bins",' + '"va_pct":' + str.tostring(_vpVaPct) + ',"bins":' + str.tostring(_vpBins)
+        vpStr += ',"poc":' + pocStr + ',"val":' + valStr + ',"vah":' + vahStr + ',"dist_to_poc_norm":' + distStr + ',"in_va":' + invaStr
+        if str.length(accStr) > 0
+            vpStr += ',"acceptance_ratio":' + accStr
+        if str.length(driftStr) > 0
+            vpStr += ',"poc_drift":' + driftStr
+        vpStr += ',"regime":"' + (na(vp_regime) ? "" : vp_regime) + '"'
+        if _debugMode and not na(vp_n)
+            string nEffStr = numStr(vp_n)
+            if str.length(nEffStr) == 0
+                nEffStr := str.tostring(vp_n)
+            vpStr += ',"n_bins_eff":' + nEffStr
+        if (_debugMode or _payloadProf == PROFILE_RICH) and not na(vp_quality)
+            string qStr = numStr(vp_quality)
+            if str.length(qStr) == 0
+                qStr := str.tostring(vp_quality)
+            vpStr += ',"vp_quality":' + qStr
+        if _payloadProf == PROFILE_RICH and not na(vp_count) and not na(vp_denom)
+            vpStr += ',"acceptance_ratio_raw":{' + '"count":' + str.tostring(vp_count) + ',"denom":' + str.tostring(vp_denom) + '}'
+        vpStr += '}'
+        vpStr += ',"ext":{"vp_lite":true}'
+        vpStr
+    else
+        ''
+
+emitPairBlock() =>
+    string pairBlock = ''
+    if pairReady
+        string corrStr = numStr(pairCorr)
+        if str.length(corrStr) == 0
+            corrStr := str.tostring(pairCorr)
+        pairBlock := ',"pair":{"sym":"' + _pairSymbol + '","corr":' + corrStr
+        string zStr = numStr(spreadZ)
+        if str.length(zStr) > 0
+            pairBlock += ',"z":' + zStr
+        pairBlock += ',"div":' + str.tostring(pairDiverge)
+        pairBlock += '}'
+    pairBlock
+
+emitRiskBlock() =>
+    string riskAtr = numStr(atrPct)
+    string riskStr = ',"risk":{"atrp":' + (str.length(riskAtr) > 0 ? riskAtr : 'null')
+    if _payloadProf == PROFILE_RICH
+        riskStr += ',"atrp_raw":' + str.tostring(atrPct)
+    if not na(dd14)
+        string ddStr = numStr(dd14)
+        riskStr += ',"dd14":' + (str.length(ddStr) > 0 ? ddStr : 'null')
+    if not na(riskRU)
+        string ruStr = numStr(riskRU)
+        riskStr += ',"ru":' + (str.length(ruStr) > 0 ? ruStr : 'null')
+    if not na(suggStop)
+        string stopStr = numStr(suggStop)
+        riskStr += ',"stop":' + (str.length(stopStr) > 0 ? stopStr : 'null')
+    if not na(atrVal) and not na(close_)
+        string rUnit = numStr(atrVal)
+        riskStr += ',"r_multiple_unit":' + (str.length(rUnit) > 0 ? rUnit : 'null')
+    float shelf = not na(emaVal) ? emaVal : smaVal
+    if not na(shelf)
+        string sStop = numStr(shelf - 1.0 * atrVal)
+        if str.length(sStop) == 0
+            sStop := str.tostring(shelf - 1.0 * atrVal)
+        riskStr += ',"suggested_stop":' + sStop
+    riskStr += '}'
+    riskStr
+
+emitZBlock() =>
+    string vz100 = numStr(volZ100)
+    if str.length(vz100) == 0
+        vz100 := 'null'
+    string rz100 = numStr(rngZ100)
+    if str.length(rz100) == 0
+        rz100 := 'null'
+    ',"z":{' + '"vol_z":' + vz100 + ',"rng_z":' + rz100 + '}'
+
+emitIntentBlock() =>
+    string intentStr = ',"intent":{"long":' + str.tostring(longOk ? 1 : 0) + ',"short":' + str.tostring(shortOk ? 1 : 0)
+    if not na(t1)
+        intentStr += ',"t1":' + numStr(t1)
+    if not na(t2)
+        intentStr += ',"t2":' + numStr(t2)
+    if not na(s1)
+        intentStr += ',"s1":' + numStr(s1)
+    intentStr += '}'
+    intentStr
+
+emitContextBlock() =>
+    string rankStr = numStr(atrPctRank)
+    ',"context":{"tod":"' + todBucket + '","atrRank":' + (str.length(rankStr) > 0 ? rankStr : 'null') + '}'
+
+emitSignalsBlock() =>
+    string out = ''
+    if _includeSignals and not na(atrVal) and not na(close_)
+        float atr = atrVal
+        float trigL = not na(fibHi) ? fibHi + 0.25 * atr : close_ + 0.25 * atr
+        float stopL = trigL - 1.0 * atr
+        float tp1L = trigL + 1.0 * atr
+        float tp2L = not na(emaVal) and emaVal > trigL ? emaVal : trigL + 2.0 * atr
+        float tpXL = trigL + 3.0 * atr
+        float rrL = (trigL - stopL) != 0 ? (tp1L - trigL) / (trigL - stopL) : na
+        float baseTop = not na(fibHi) ? fibHi : (not na(smaVal) ? smaVal : close_)
+        float trigS = baseTop - 0.25 * atr
+        float stopS = trigS + 1.0 * atr
+        float tp1S = trigS - 1.0 * atr
+        float tp2S = not na(smaVal) and smaVal < trigS ? smaVal : trigS - 2.0 * atr
+        float tpXS = trigS - 3.0 * atr
+        float rrS = (stopS - trigS) != 0 ? (trigS - tp1S) / (stopS - trigS) : na
+        float baseBuy = not na(fibLo) ? fibLo : (not na(emaVal) ? emaVal : close_)
+        float baseSell = not na(fibHi) ? fibHi : (not na(smaVal) ? smaVal : close_)
+        float zoneW = 0.25 * atr
+        float buyLo = baseBuy - 0.5 * zoneW
+        float buyHi = baseBuy + 0.5 * zoneW
+        float sellLo = baseSell - 0.5 * zoneW
+        float sellHi = baseSell + 0.5 * zoneW
+        float stopR = baseBuy - 1.0 * atr
+        float tpR = baseSell - 0.25 * atr
+        string nTrigL = numStr(trigL)
+        if str.length(nTrigL) == 0
+            nTrigL := str.tostring(trigL)
+        string nStopL = numStr(stopL)
+        if str.length(nStopL) == 0
+            nStopL := str.tostring(stopL)
+        string nTp1L = numStr(tp1L)
+        if str.length(nTp1L) == 0
+            nTp1L := str.tostring(tp1L)
+        string nTp2L = numStr(tp2L)
+        if str.length(nTp2L) == 0
+            nTp2L := str.tostring(tp2L)
+        string nTpXL = numStr(tpXL)
+        if str.length(nTpXL) == 0
+            nTpXL := str.tostring(tpXL)
+        string nRrL = numStr(rrL)
+        if str.length(nRrL) == 0
+            nRrL := str.tostring(rrL)
+        string nTrigS = numStr(trigS)
+        if str.length(nTrigS) == 0
+            nTrigS := str.tostring(trigS)
+        string nStopS = numStr(stopS)
+        if str.length(nStopS) == 0
+            nStopS := str.tostring(stopS)
+        string nTp1S = numStr(tp1S)
+        if str.length(nTp1S) == 0
+            nTp1S := str.tostring(tp1S)
+        string nTp2S = numStr(tp2S)
+        if str.length(nTp2S) == 0
+            nTp2S := str.tostring(tp2S)
+        string nTpXS = numStr(tpXS)
+        if str.length(nTpXS) == 0
+            nTpXS := str.tostring(tpXS)
+        string nRrS = numStr(rrS)
+        if str.length(nRrS) == 0
+            nRrS := str.tostring(rrS)
+        string nBuyLo = numStr(buyLo)
+        if str.length(nBuyLo) == 0
+            nBuyLo := str.tostring(buyLo)
+        string nBuyHi = numStr(buyHi)
+        if str.length(nBuyHi) == 0
+            nBuyHi := str.tostring(buyHi)
+        string nSellLo = numStr(sellLo)
+        if str.length(nSellLo) == 0
+            nSellLo := str.tostring(sellLo)
+        string nSellHi = numStr(sellHi)
+        if str.length(nSellHi) == 0
+            nSellHi := str.tostring(sellHi)
+        string nStopR = numStr(stopR)
+        if str.length(nStopR) == 0
+            nStopR := str.tostring(stopR)
+        string nTpR = numStr(tpR)
+        if str.length(nTpR) == 0
+            nTpR := str.tostring(tpR)
+        string fibHiStr = not na(fibHi) ? numStr(fibHi) : ''
+        if str.length(fibHiStr) == 0 and not na(fibHi)
+            fibHiStr := str.tostring(fibHi)
+        string longCtx = 'Breakout above ' + (str.length(fibHiStr) > 0 ? fibHiStr : 'resistance') + ', targeting EMA/fib extension.'
+        string shortCtx = 'Failed breakout at ' + (str.length(fibHiStr) > 0 ? fibHiStr : 'resistance') + ', fade to SMA/fib base.'
+        string rangeCtx = 'Scalp range if volume dries up and no clean break.'
+        out += ',"sig":{'
+        out += '"bull_break":' + str.tostring(bull_break) + ',"bear_break":' + str.tostring(bear_break)
+        out += ',"triggers":{'
+        out += '"breakout_long":{'
+        out += '"level":' + nTrigL + ',"confirm":"close>level","invalid_at":' + nStopL + '}'
+        out += ',"rejection_short":{'
+        out += '"level":' + nTrigS + ',"confirm":"wick_reject","invalid_at":' + nStopS + '}'
+        out += '}'
+        out += ',"long":{'
+        out += '"trigger":' + nTrigL + ',"stop":' + nStopL + ',"tp1":' + nTp1L + ',"tp2":' + nTp2L + ',"tpX":' + nTpXL + ',"rr":' + nRrL + ',"context":"' + longCtx + '"}'
+        out += ',"short":{'
+        out += '"trigger":' + nTrigS + ',"stop":' + nStopS + ',"tp1":' + nTp1S + ',"tp2":' + nTp2S + ',"tpX":' + nTpXS + ',"rr":' + nRrS + ',"context":"' + shortCtx + '"}'
+        out += ',"range":{'
+        out += '"buy_zone":[' + nBuyLo + ',' + nBuyHi + '],"sell_zone":[' + nSellLo + ',' + nSellHi + '],"stop":' + nStopR + ',"tp":' + nTpR + ',"context":"' + rangeCtx + '"}'
+        out += '}'
+    out
+
+emitQualityBlock() =>
+    string s = ',"q":{"complete":' + str.tostring(calcOK ? 1 : 0) + ',"gaps":0,"rounding":"precisionEff=' + str.tostring(precisionEff) + '"'
+    string warn = warnList
+    if anomaly == 1
+        warn := str.length(warn) > 0 ? warn + ',"bar_anomaly"' : '"bar_anomaly"'
+    if str.length(warn) > 0
+        s += ',"warn":[' + warn + ']'
+    s += '}'
+    s
+
+emitHealthBlock() =>
+    string lagStr = numStr(lagMS)
+    ',"health":{"bars":' + str.tostring(barsCount) + ',"lag":' + (str.length(lagStr) > 0 ? lagStr : 'null') + ',"calc":' + str.tostring(calcOK ? 1 : 0) + '}'
+
+emitVecBlock(string uid) =>
+    string out = ''
+    if _includeVec and richExtrasEnabled
+        string vecStr = ',"vec":['
+        string[] vecVals = array.new_string()
+        array.push(vecVals, numStr(close_) != '' ? numStr(close_) : str.tostring(close_))
+        array.push(vecVals, numStr(rsiVal) != '' ? numStr(rsiVal) : str.tostring(rsiVal))
+        array.push(vecVals, numStr(atrPct) != '' ? numStr(atrPct) : str.tostring(atrPct))
+        array.push(vecVals, numStr(bbp) != '' ? numStr(bbp) : str.tostring(bbp))
+        array.push(vecVals, numStr(adxVal) != '' ? numStr(adxVal) : str.tostring(adxVal))
+        array.push(vecVals, numStr(diPlusVal) != '' ? numStr(diPlusVal) : str.tostring(diPlusVal))
+        array.push(vecVals, numStr(diMinusVal) != '' ? numStr(diMinusVal) : str.tostring(diMinusVal))
+        array.push(vecVals, numStr(slope) != '' ? numStr(slope) : str.tostring(slope))
+        array.push(vecVals, numStr(vwapDist) != '' ? numStr(vwapDist) : str.tostring(vwapDist))
+        array.push(vecVals, numStr(obvSlope) != '' ? numStr(obvSlope) : str.tostring(obvSlope))
+        array.push(vecVals, numStr(hv20) != '' ? numStr(hv20) : str.tostring(hv20))
+        array.push(vecVals, numStr(regScore) != '' ? numStr(regScore) : str.tostring(regScore))
+        int vecCount = array.size(vecVals)
+        int vi = 0
+        while vi < vecCount
+            if vi > 0
+                vecStr += ','
+            vecStr += array.get(vecVals, vi)
+            vi += 1
+        vecStr += ']'
+        out := vecStr
+    out
+
+emitHumanBlock(string uid) =>
+    string out = ''
+    if _includeHuman
+        string humanBase = str.format('[INTENT] {0} {1} long={2} short={3} t1={4} s1={5} adx={6} rsi={7} uid={8}', syminfo.ticker, _execTF, str.tostring(longOk ? 1 : 0), str.tostring(shortOk ? 1 : 0), numStr(t1), numStr(s1), numStr(adxVal), numStr(rsiVal), uid)
+        string humanSan = str.replace(str.replace(str.replace(humanBase, "\"", "'"), "\r", " "), "\n", " ")
+        out := ',"human":"' + humanSan + '"'
+    out
+if barstate.isconfirmed and (newExecBar or seedExecBar)
+    seq += 1
+    int tSec = execTimeSecSeries
+    string uid = syminfo.ticker + '-' + _execTF + '-' + str.tostring(tSec)
+    string s = '{"schema":"' + SCHEMA_TAG + '","ver":' + str.tostring(SCHEMA_VER) + ',"uid":"' + uid + '","s":"' + syminfo.ticker + '","tf":"' + _execTF + '","t":' + str.tostring(tSec) + ',"horizons":{'
+    s += '"short":{' + '"tf":"' + _execTF + '","n":' + str.tostring(barsCount) + ',' + emitShortHdr() + ',' + emitShortFeat() + ',' + emitShortLevels() + '}'
+    string med = emitMedium()
+    string lng = emitLong()
+    if str.length(med) > 0
+        s += ',' + med
+    if str.length(lng) > 0
+        s += ',' + lng
+    s += '}'
+    s += emitMetaBlock()
+    s += emitRegBlock()
+    string mblock = emitMacroBlock()
+    if str.length(mblock) > 0
+        s += mblock
+    string vpblock = emitVpBlock()
+    if str.length(vpblock) > 0
+        s += vpblock
+    s += emitPairBlock()
+    s += emitRiskBlock()
+    s += ',"regime":"' + regime + '"'
+    s += ',"regime_score":' + numStr(regScore)
+    s += emitZBlock()
+    s += emitIntentBlock()
+    s += emitContextBlock()
+    s += emitSignalsBlock()
+    s += emitQualityBlock()
+    s += ',"bars":' + buildBarsJson(precisionEff)
+    s += ',"cfg":{"hash":' + str.tostring(cfgHash) + '}'
+    s += ',"seq":' + str.tostring(seq)
+    s += emitHealthBlock()
+    s += emitVecBlock(uid)
+    s += emitHumanBlock(uid)
+    int auditNan = calcOK ? 0 : 1
+    string basePayload = s + ',"audit":{"nan":' + str.tostring(auditNan) + ',"len":0}}'
+    int payloadLen = str.length(basePayload)
+    string payload = s + ',"audit":{"nan":' + str.tostring(auditNan) + ',"len":' + str.tostring(payloadLen) + '}}'
+    int payloadLenFinal = str.length(payload)
+    if payloadLenFinal != payloadLen
+        payload := s + ',"audit":{"nan":' + str.tostring(auditNan) + ',"len":' + str.tostring(payloadLenFinal) + '}}'
+    lastPayload := payload
+    lastUID := syminfo.ticker + '-' + _execTF + '-' + str.tostring(execTimeSecSeries)
+    lastRegime := regime
+    lastIntentLong := intentLongState ? 1 : 0
+    lastIntentShort := intentShortState ? 1 : 0
+    lastBreakUp := bkU ? 1 : 0
+    lastBreakDown := bkD ? 1 : 0
+    if _alertOnClose
+        alert(payload)
+
+// Debug size label
+if _debugMode and barstate.islast
+    label.new(bar_index, high, text='bytes:' + str.tostring(str.length(lastPayload)), style=label.style_label_down, size=size.tiny)
+
+plotchar(not _showPayloadLabel and _debugMode and barstate.islast ? str.length(lastPayload) : na, title="Payload Bytes", char=".", location=location.bottom, size=size.tiny, color=color.new(color.blue, 50))
+
+// Chart debug badge for anomaly (only if debug mode)
+plotshape(_debugMode and anomaly == 1, title="Anomaly", style=shape.labeldown, text='ANOM', location=location.abovebar, size=size.tiny, color=color.new(color.red, 0), textcolor=color.white)
+
+// Optional on-chart overlay for VP POC/VAL/VAH (plots must be at global scope)
+// Draw VAL, VAH first, then POC so POC tends to sit on top visually
+plot((_debugMode or _vpOverlay) and _includeVP and not na(vp_val) ? vp_val : na,   color=color.new(color.green, _vpTransp),  title="VP VAL", linewidth=_vpLineWidth)
+plot((_debugMode or _vpOverlay) and _includeVP and not na(vp_vah) ? vp_vah : na,   color=color.new(color.red,   _vpTransp),  title="VP VAH", linewidth=_vpLineWidth)
+plot((_debugMode or _vpOverlay) and _includeVP and not na(vp_poc) ? vp_poc : na,   color=color.new(color.orange,_vpTransp),  title="VP POC", linewidth=_vpLineWidth)
+// Optional topmost plot to force z-order of selected line
+var float _vpTopSeries = na
+_vpTopSeries := _vpTop == "POC" ? vp_poc : _vpTop == "VAL" ? vp_val : vp_vah
+plot((_debugMode or _vpOverlay) and _includeVP and not na(_vpTopSeries) ? _vpTopSeries : na, color=color.new(color.white, (_vpTransp + 20 <= 100 ? _vpTransp + 20 : 100)), title="VP Top", linewidth=_vpLineWidth)
+
+if _debugMode
+    if na(debugTable)
+        debugTable := table.new(position.top_right, 1, 1, bgcolor=color.new(color.black, 78), frame_color=color.new(color.white, 70), frame_width=1)
+    string payloadText = str.length(lastPayload) > 0 ? lastPayload : 'payload pending'
+    table.cell(debugTable, 0, 0, payloadText, text_color=color.white, text_size=size.tiny)
+else
+    if not na(debugTable)
+        table.cell(debugTable, 0, 0, '')
+
+// Hidden numeric plots for integrations
+float payload_bytes = float(str.length(lastPayload))
+float anomaly_flag = float(anomaly)
+float _payloadAnchor = 0.0
+plot(payload_bytes,  title="Payload Bytes",  display=display.none)
+plot(anomaly_flag,   title="Anomaly",        display=display.none)
+plot(_payloadAnchor, title="_payloadAnchor", display=display.none)
+
+var label payloadLabel = na
+if _showPayloadLabel and barstate.islast
+    string payloadTextFull = str.length(lastPayload) > 0 ? lastPayload : 'payload pending'
+    if na(payloadLabel)
+        payloadLabel := label.new(bar_index, 0, text=payloadTextFull, xloc=xloc.bar_index, yloc=yloc.price, style=label.style_label_left, textcolor=color.white, color=color.new(color.black, 0), size=size.small, textalign=text.align_left)
+    else
+        label.set_x(payloadLabel, bar_index)
+        label.set_y(payloadLabel, 0)
+        label.set_text(payloadLabel, payloadTextFull)
+        label.set_textalign(payloadLabel, text.align_left)
+        label.set_size(payloadLabel, size.small)
+        label.set_color(payloadLabel, color.new(color.black, 0))
+        label.set_textcolor(payloadLabel, color.white)
+else if not na(payloadLabel)
+    label.delete(payloadLabel)
+    payloadLabel := na
+
+// END OF SCAFFOLD
+
+
+

@@ -1,0 +1,8 @@
+[build]
+publish = "site"
+
+# Optional: basic caching for static assets
+[[headers]]
+for = "/*"
+  [headers.values]
+  Cache-Control = "public, max-age=600"
