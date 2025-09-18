@@ -27,6 +27,10 @@ const { src = '/samples/opusdt.sample.json' } = Astro.props;
       const formatted = JSON.stringify(data, null, 2);
       document.getElementById('jsonCode').textContent = formatted;
       document.getElementById('status').textContent = 'Loaded';
+      // Prism highlight after injecting content
+      if (window.Prism) {
+        window.Prism.highlightElement(document.getElementById('jsonCode'));
+      }
     } catch (e) {
       document.getElementById('jsonCode').textContent = 'Failed to load sample JSON';
       document.getElementById('status').textContent = 'Error';
@@ -45,4 +49,21 @@ const { src = '/samples/opusdt.sample.json' } = Astro.props;
     if (viewer) viewer.style.display = open ? 'block' : 'none';
     if (toggleBtn) toggleBtn.textContent = open ? 'Collapse' : 'Expand';
   });
+
+  // Load Prism assets for client-side highlighting
+  (function ensurePrism(){
+    if (window.Prism) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css';
+    document.head.appendChild(link);
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js';
+    script.onload = () => {
+      const lang = document.createElement('script');
+      lang.src = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-json.min.js';
+      document.body.appendChild(lang);
+    };
+    document.body.appendChild(script);
+  })();
 </script>
