@@ -1,0 +1,39 @@
+---
+const { currentPath = '/' } = Astro.props;
+
+const links = [
+  { href: '/', label: 'Home' },
+  { href: '/product', label: 'Product' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: '/faq', label: 'FAQ' },
+  { href: '/docs', label: 'Docs' },
+];
+
+const isActive = (href: string) => currentPath === href || (href !== '/' && currentPath.startsWith(href));
+---
+<header class="sticky top-0 z-50 border-b border-white/5 bg-surface/80 backdrop-blur">
+  <nav class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <a href="/" class="flex items-center gap-2">
+      <img src="/site/assets/images/quantlens-logo.svg" alt="QuantLens" class="h-7 w-auto" />
+      <span class="sr-only">QuantLens</span>
+    </a>
+    <div class="hidden md:flex items-center gap-6">
+      {links.map(l => (
+        <a href={l.href} class={`text-sm font-medium hover:text-white ${isActive(l.href) ? 'text-white' : 'text-slate-300'}`}>{l.label}</a>
+      ))}
+      <a href="mailto:quant.lenstm@gmail.com" class="text-sm font-medium text-slate-300 hover:text-white">Contact</a>
+    </div>
+    <details class="md:hidden">
+      <summary class="list-none cursor-pointer p-2 rounded-md hover:bg-white/5">
+        <span class="sr-only">Menu</span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="text-slate-200"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </summary>
+      <div class="absolute right-4 mt-2 w-48 rounded-lg glass p-2 border border-white/10">
+        {links.map(l => (
+          <a href={l.href} class={`block px-3 py-2 rounded-md text-sm hover:bg-white/5 ${isActive(l.href) ? 'text-white' : 'text-slate-300'}`}>{l.label}</a>
+        ))}
+        <a href="mailto:quant.lenstm@gmail.com" class="block px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-white/5">Contact</a>
+      </div>
+    </details>
+  </nav>
+</header>
