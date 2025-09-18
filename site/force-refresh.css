@@ -1,0 +1,5 @@
+/* Force refresh CSS file for cache busting */
+/* This file forces browser cache refresh */
+body.force-refresh { 
+  background: var(--bg) !important; 
+}
