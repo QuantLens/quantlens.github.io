@@ -1,0 +1,14 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+<BaseLayout title="FAQ — QuantLens" description="Common questions about the exporter and setup.">
+  <section class="container mx-auto px-6 py-16 max-w-3xl">
+    <h1 class="text-3xl font-semibold mb-6">FAQ</h1>
+    <h2 class="text-xl font-semibold">Do you host an API?</h2>
+    <p class="text-slate-300 mb-6">No. QuantLens emits JSON from TradingView. You host the webhook/collector. We provide examples.</p>
+    <h2 class="text-xl font-semibold">Is the JSON AI-ready?</h2>
+    <p class="text-slate-300 mb-6">Yes. Stable keys and blocks for LLM reasoning. You wire it to your model or data store.</p>
+    <h2 class="text-xl font-semibold">What about caching issues?</h2>
+    <p class="text-slate-300">We removed service workers and use a static site to avoid stale content while we rebuild.</p>
+  </section>
+</BaseLayout>

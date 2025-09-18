@@ -1,3 +1,11 @@
+node_modules
+.DS_Store
+dist
+.astro
+coverage
+*.log
+pnpm-lock.yaml
+yarn.lock
 # OS
 .DS_Store
 Thumbs.db

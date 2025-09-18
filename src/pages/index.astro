@@ -1,0 +1,39 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="QuantLens — AI-ready JSON for TradingView" description="Export rich market context from TradingView to your AI stack.">
+  <section class="relative flex items-center justify-center py-24">
+    <div class="absolute inset-0 -z-10 bg-gradient-to-b from-brand-900/40 via-surface to-surface"></div>
+    <div class="container mx-auto px-6 text-center max-w-4xl">
+      <img src="/site/assets/images/quantlens-logo.svg" alt="QuantLens" class="mx-auto h-16 w-auto mb-8 opacity-90" />
+      <h1 class="text-4xl sm:text-6xl font-semibold leading-tight">
+        <span class="gradient-text">QuantLens</span>
+      </h1>
+      <p class="mt-6 text-lg text-slate-300">
+        Export structured, AI-ready JSON from TradingView — horizons, context, intent, signals, and more.
+      </p>
+      <div class="mt-10 flex gap-4 justify-center">
+        <a href="/product" class="px-5 py-3 rounded-lg bg-brand-500 hover:bg-brand-400 text-slate-900 font-medium shadow-glow">See Product</a>
+        <a href="/docs" class="px-5 py-3 rounded-lg glass">Read Docs</a>
+      </div>
+      <p class="mt-6 text-sm text-slate-400">Email: <a class="underline hover:text-slate-200" href="mailto:quant.lenstm@gmail.com">quant.lenstm@gmail.com</a></p>
+    </div>
+  </section>
+  <section class="py-16">
+    <div class="container mx-auto px-6 max-w-5xl grid md:grid-cols-3 gap-6">
+      <div class="glass p-6 rounded-xl">
+        <h3 class="text-xl font-semibold mb-2">Rich JSON Schema</h3>
+        <p class="text-slate-300">Multi-horizon frames, macro, volume profile lite, risk and signals, human context, and audit fields.</p>
+      </div>
+      <div class="glass p-6 rounded-xl">
+        <h3 class="text-xl font-semibold mb-2">LLM Friendly</h3>
+        <p class="text-slate-300">Clean keys, stable structure, and examples for collectors so your AI can reason over markets.</p>
+      </div>
+      <div class="glass p-6 rounded-xl">
+        <h3 class="text-xl font-semibold mb-2">Own Your Pipeline</h3>
+        <p class="text-slate-300">We don’t host your data. You control the webhook and storage with our exporter guidance.</p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
