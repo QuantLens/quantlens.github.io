@@ -1,0 +1,15 @@
+---
+const { action = 'https://formspree.io/f/your-form-id', headline = 'Get early access', subtext = 'Be first to know when pricing tiers launch.', button = 'Notify me' } = Astro.props;
+---
+<form action={action} method="POST" class="glass p-6 rounded-xl grid gap-3" target="_blank">
+  <div>
+    <h3 class="text-lg font-semibold">{headline}</h3>
+    <p class="text-slate-300 text-sm">{subtext}</p>
+  </div>
+  <div class="flex flex-col sm:flex-row gap-3">
+    <input required name="email" type="email" placeholder="you@domain.com" class="flex-1 rounded-md bg-black/30 border border-white/10 px-4 py-3 outline-none focus:ring-2 focus:ring-brand-500" />
+    <button type="submit" class="px-5 py-3 rounded-md bg-brand-500 hover:bg-brand-400 text-slate-900 font-medium">{button}</button>
+  </div>
+  <input type="hidden" name="source" value="quantlens.github.io" />
+  <p class="text-xs text-slate-500">We’ll email you about launch and updates. Unsubscribe anytime.</p>
+</form>

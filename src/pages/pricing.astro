@@ -1,9 +1,16 @@
----
 import BaseLayout from "../layouts/BaseLayout.astro";
+import PricingGrid from "../components/PricingGrid.astro";
+import EmailCapture from "../components/EmailCapture.astro";
 ---
 <BaseLayout title="Pricing — QuantLens" description="Simple pricing once we launch.">
-  <section class="container mx-auto px-6 py-16 max-w-3xl">
-    <h1 class="text-3xl font-semibold mb-4">Pricing</h1>
-    <p class="text-slate-300">We’re finalizing plans. For now, the exporter is free to use. Contact us for early access.</p>
+  <section class="container mx-auto px-6 py-16 max-w-6xl">
+    <div class="mb-10 max-w-2xl">
+      <h1 class="text-3xl font-semibold mb-3">Pricing</h1>
+      <p class="text-slate-300">Exporter is free during early access. Join the list to get notified when Pro and Teams launch.</p>
+    </div>
+    <PricingGrid />
+    <div class="mt-10 max-w-2xl">
+      <EmailCapture action="https://formspree.io/f/your-form-id" headline="Get notified at launch" subtext="We’ll email you when paid tiers are ready." button="Notify me" />
+    </div>
   </section>
 </BaseLayout>

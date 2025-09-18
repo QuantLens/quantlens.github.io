@@ -1,0 +1,51 @@
+---
+const { data = {} } = Astro.props;
+---
+<div class="text-sm" id="treeRoot"></div>
+<script>
+  const data = JSON.parse({JSON.stringify(data)});
+
+  function renderTree(node, path = '$') {
+    const container = document.createElement('div');
+    container.className = 'pl-4 border-l border-white/10 my-1';
+    if (Array.isArray(node)) {
+      node.forEach((v, i) => container.appendChild(renderEntry(i, v, `${path}[${i}]`)));
+    } else if (node && typeof node === 'object') {
+      Object.entries(node).forEach(([k, v]) => container.appendChild(renderEntry(k, v, `${path}.${k}`)));
+    } else {
+      container.textContent = String(node);
+    }
+    return container;
+  }
+
+  function renderEntry(key, value, path) {
+    const row = document.createElement('div');
+    const isBranch = value && (typeof value === 'object');
+    row.className = 'my-1';
+    const toggle = document.createElement('button');
+    toggle.className = 'mr-2 text-xs px-1 rounded bg-white/10 hover:bg-white/20';
+    toggle.textContent = isBranch ? '-' : '·';
+    const label = document.createElement('span');
+    label.innerHTML = `<span class="text-slate-400">${String(key)}:</span> <span class="text-slate-200">${isBranch ? (Array.isArray(value) ? '[...]' : '{...}') : JSON.stringify(value)}</span>`;
+    const copy = document.createElement('button');
+    copy.className = 'ml-2 text-xs px-1 rounded bg-brand-500 text-slate-900 hover:bg-brand-400';
+    copy.textContent = 'Copy path';
+    copy.addEventListener('click', () => navigator.clipboard.writeText(path));
+    row.appendChild(toggle);
+    row.appendChild(label);
+    row.appendChild(copy);
+    if (isBranch) {
+      const child = renderTree(value, path);
+      row.appendChild(child);
+      toggle.addEventListener('click', () => {
+        const open = child.style.display !== 'none';
+        child.style.display = open ? 'none' : 'block';
+        toggle.textContent = open ? '+' : '-';
+      });
+    }
+    return row;
+  }
+
+  const root = document.getElementById('treeRoot');
+  root.appendChild(renderTree(data));
+</script>

@@ -12,8 +12,15 @@ const { src = '/samples/opusdt.sample.json' } = Astro.props;
       <button id="copyBtn" class="px-3 py-1.5 text-sm rounded-md bg-brand-500 text-slate-900 hover:bg-brand-400">Copy</button>
     </div>
   </div>
+  <div class="flex gap-2 mb-2">
+    <button id="tabRaw" class="px-3 py-1.5 text-sm rounded-md bg-white/10">Raw</button>
+    <button id="tabTree" class="px-3 py-1.5 text-sm rounded-md hover:bg-white/10">Tree</button>
+  </div>
   <div id="viewer">
-    <pre class="overflow-auto text-sm max-h-96"><code id="jsonCode" class="language-json">Loading…</code></pre>
+    <div id="panelRaw">
+      <pre class="overflow-auto text-sm max-h-96"><code id="jsonCode" class="language-json">Loading…</code></pre>
+    </div>
+    <div id="panelTree" class="hidden"></div>
     <p class="text-xs text-slate-400 mt-2">Source: {src}</p>
   </div>
 </section>
@@ -23,8 +30,9 @@ const { src = '/samples/opusdt.sample.json' } = Astro.props;
   async function load() {
     try {
       const res = await fetch(src, { cache: 'no-store' });
-      const data = await res.json();
-      const formatted = JSON.stringify(data, null, 2);
+  const data = await res.json();
+  window.__ql_data = data;
+  const formatted = JSON.stringify(data, null, 2);
       document.getElementById('jsonCode').textContent = formatted;
       document.getElementById('status').textContent = 'Loaded';
       // Prism highlight after injecting content
@@ -66,4 +74,72 @@ const { src = '/samples/opusdt.sample.json' } = Astro.props;
     };
     document.body.appendChild(script);
   })();
+
+  // Tabs
+  const tabRaw = document.getElementById('tabRaw');
+  const tabTree = document.getElementById('tabTree');
+  const panelRaw = document.getElementById('panelRaw');
+  const panelTree = document.getElementById('panelTree');
+  function activate(which) {
+    if (which === 'tree') {
+      panelRaw.classList.add('hidden');
+      panelTree.classList.remove('hidden');
+      if (!panelTree.dataset.loaded && window.__ql_data) {
+        import('./JsonTreeViewer.astro').then(() => {
+          // Hydration workaround: inline render via creating a container and populating with a new instance by SSR is not available.
+          // Instead, we rebuild a light DOM tree here:
+          panelTree.innerHTML = '';
+          const data = window.__ql_data;
+          const wrap = document.createElement('div');
+          function renderTree(node, path = '$') {
+            const container = document.createElement('div');
+            container.className = 'pl-4 border-l border-white/10 my-1';
+            if (Array.isArray(node)) {
+              node.forEach((v, i) => container.appendChild(renderEntry(i, v, `${path}[${i}]`)));
+            } else if (node && typeof node === 'object') {
+              Object.entries(node).forEach(([k, v]) => container.appendChild(renderEntry(k, v, `${path}.${k}`)));
+            } else {
+              container.textContent = String(node);
+            }
+            return container;
+          }
+          function renderEntry(key, value, path) {
+            const row = document.createElement('div');
+            const isBranch = value && (typeof value === 'object');
+            row.className = 'my-1';
+            const toggle = document.createElement('button');
+            toggle.className = 'mr-2 text-xs px-1 rounded bg-white/10 hover:bg-white/20';
+            toggle.textContent = isBranch ? '-' : '·';
+            const label = document.createElement('span');
+            label.innerHTML = `<span class="text-slate-400">${String(key)}:</span> <span class="text-slate-200">${isBranch ? (Array.isArray(value) ? '[...]' : '{...}') : JSON.stringify(value)}</span>`;
+            const copy = document.createElement('button');
+            copy.className = 'ml-2 text-xs px-1 rounded bg-brand-500 text-slate-900 hover:bg-brand-400';
+            copy.textContent = 'Copy path';
+            copy.addEventListener('click', () => navigator.clipboard.writeText(path));
+            row.appendChild(toggle);
+            row.appendChild(label);
+            row.appendChild(copy);
+            if (isBranch) {
+              const child = renderTree(value, path);
+              row.appendChild(child);
+              toggle.addEventListener('click', () => {
+                const open = child.style.display !== 'none';
+                child.style.display = open ? 'none' : 'block';
+                toggle.textContent = open ? '+' : '-';
+              });
+            }
+            return row;
+          }
+          wrap.appendChild(renderTree(data));
+          panelTree.appendChild(wrap);
+          panelTree.dataset.loaded = '1';
+        });
+      }
+    } else {
+      panelTree.classList.add('hidden');
+      panelRaw.classList.remove('hidden');
+    }
+  }
+  tabRaw?.addEventListener('click', () => activate('raw'));
+  tabTree?.addEventListener('click', () => activate('tree'));
 </script>
