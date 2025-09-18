@@ -3,11 +3,19 @@ const { src = '/samples/opusdt.sample.json' } = Astro.props;
 ---
 <section class="glass p-6 rounded-xl">
   <div class="flex items-center justify-between mb-3">
-    <h3 class="text-lg font-semibold">Live JSON Demo</h3>
-    <button id="copyBtn" class="px-3 py-1.5 text-sm rounded-md bg-brand-500 text-slate-900 hover:bg-brand-400">Copy</button>
+    <div class="flex items-center gap-3">
+      <h3 class="text-lg font-semibold">Live JSON Demo</h3>
+      <span id="status" class="text-xs text-slate-400">Loading…</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="toggleBtn" class="px-3 py-1.5 text-sm rounded-md glass hover:bg-white/10">Collapse</button>
+      <button id="copyBtn" class="px-3 py-1.5 text-sm rounded-md bg-brand-500 text-slate-900 hover:bg-brand-400">Copy</button>
+    </div>
   </div>
-  <pre class="overflow-auto text-sm max-h-96"><code id="jsonCode" class="language-json">Loading…</code></pre>
-  <p class="text-xs text-slate-400 mt-2">Source: {src}</p>
+  <div id="viewer">
+    <pre class="overflow-auto text-sm max-h-96"><code id="jsonCode" class="language-json">Loading…</code></pre>
+    <p class="text-xs text-slate-400 mt-2">Source: {src}</p>
+  </div>
 </section>
 
 <script>
@@ -18,13 +26,23 @@ const { src = '/samples/opusdt.sample.json' } = Astro.props;
       const data = await res.json();
       const formatted = JSON.stringify(data, null, 2);
       document.getElementById('jsonCode').textContent = formatted;
+      document.getElementById('status').textContent = 'Loaded';
     } catch (e) {
       document.getElementById('jsonCode').textContent = 'Failed to load sample JSON';
+      document.getElementById('status').textContent = 'Error';
     }
   }
   load();
   document.getElementById('copyBtn')?.addEventListener('click', () => {
     const text = document.getElementById('jsonCode')?.textContent || '';
     navigator.clipboard.writeText(text);
+  });
+  const viewer = document.getElementById('viewer');
+  const toggleBtn = document.getElementById('toggleBtn');
+  let open = true;
+  toggleBtn?.addEventListener('click', () => {
+    open = !open;
+    if (viewer) viewer.style.display = open ? 'block' : 'none';
+    if (toggleBtn) toggleBtn.textContent = open ? 'Collapse' : 'Expand';
   });
 </script>

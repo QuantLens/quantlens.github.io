@@ -9,4 +9,12 @@ export default defineConfig({
   server: { port: 4321 },
   site: 'https://quantlens.github.io',
   base: '/',
+  markdown: {
+    syntaxHighlight: 'shiki',
+    shikiConfig: {
+      theme: 'dracula'
+    },
+    remarkPlugins: [],
+    rehypePlugins: [],
+  }
 });

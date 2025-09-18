@@ -1,0 +1,42 @@
+---
+import '../styles.css';
+import NavBar from "../components/NavBar.astro";
+import Footer from "../components/Footer.astro";
+const { title = 'Docs — QuantLens', description = 'Documentation for QuantLens', } = Astro.props;
+const currentPath = Astro.url.pathname;
+
+const links = [
+  { href: '/docs/setup', label: 'Setup' },
+  { href: '/docs/json-schema-v1', label: 'JSON Schema v1' },
+  { href: '/docs/collector-quickstart', label: 'Collector Quickstart' },
+  { href: '/docs/recipes', label: 'Recipes' },
+];
+---
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <link rel="icon" href="/favicon.ico" />
+  </head>
+  <body class="min-h-screen bg-surface text-slate-200">
+    <NavBar currentPath={currentPath} />
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 grid md:grid-cols-[240px_1fr] gap-8 py-10">
+      <aside class="hidden md:block">
+        <nav class="sticky top-24 space-y-1">
+          {links.map(l => (
+            <a href={l.href} class={`block px-3 py-2 rounded-md text-sm hover:bg-white/5 ${currentPath === l.href ? 'bg-white/5 text-white' : 'text-slate-300'}`}>{l.label}</a>
+          ))}
+        </nav>
+      </aside>
+      <main>
+        <article class="prose prose-invert max-w-none">
+          <slot />
+        </article>
+      </main>
+    </div>
+    <Footer />
+  </body>
+</html>
