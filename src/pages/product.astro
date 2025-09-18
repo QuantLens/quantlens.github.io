@@ -1,9 +1,60 @@
----
 import BaseLayout from "../layouts/BaseLayout.astro";
+import LiveJsonDemo from "../components/LiveJsonDemo.astro";
 ---
 <BaseLayout title="Product — QuantLens" description="What QuantLens exports and how it helps.">
-  <section class="container mx-auto px-6 py-16 max-w-4xl">
-    <h1 class="text-3xl font-semibold mb-4">Product</h1>
-    <p class="text-slate-300">Deep-dive into the JSON blocks: horizons, macro, vpLite, signals, risk, and human context.</p>
+  <section class="container mx-auto px-6 py-16 max-w-5xl">
+    <h1 class="text-3xl font-semibold mb-2">Product</h1>
+    <p class="text-slate-300 mb-8">Deep-dive into the JSON blocks: horizons, macro, vpLite, signals, risk, and human context.</p>
+
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="glass p-6 rounded-xl">
+        <h2 class="text-xl font-semibold mb-2">Horizon Frames</h2>
+        <p class="text-slate-300 mb-3">Multi-timeframe summaries such as m5, h1, d1. Typical fields: trend, rsi, signal.</p>
+        <details class="text-slate-300">
+          <summary class="cursor-pointer hover:text-white">Example</summary>
+          <pre class="mt-2 text-sm overflow-auto"><code>{`"horizons": {"m5": {"trend": "up", "rsi": 62, "signal": "pullback-long"}}`}</code></pre>
+        </details>
+      </div>
+
+      <div class="glass p-6 rounded-xl">
+        <h2 class="text-xl font-semibold mb-2">Macro</h2>
+        <p class="text-slate-300 mb-3">High-level regime hints. Keep it lightweight and useful for LLM context windows.</p>
+        <details class="text-slate-300">
+          <summary class="cursor-pointer hover:text-white">Example</summary>
+          <pre class="mt-2 text-sm overflow-auto"><code>{`"macro": {"risk_on": true, "usd_liquidity": "neutral"}`}</code></pre>
+        </details>
+      </div>
+
+      <div class="glass p-6 rounded-xl">
+        <h2 class="text-xl font-semibold mb-2">Volume Profile Lite</h2>
+        <p class="text-slate-300 mb-3">Value area and point of control. Enough for decisioning without heavy data.</p>
+        <details class="text-slate-300">
+          <summary class="cursor-pointer hover:text-white">Example</summary>
+          <pre class="mt-2 text-sm overflow-auto"><code>{`"vpLite": {"value_area": [0.85, 0.93], "poc": 0.90}`}</code></pre>
+        </details>
+      </div>
+
+      <div class="glass p-6 rounded-xl">
+        <h2 class="text-xl font-semibold mb-2">Signals & Risk</h2>
+        <p class="text-slate-300 mb-3">Structured trade hints with optional SL/TP suggestions for backtesting and agents.</p>
+        <details class="text-slate-300">
+          <summary class="cursor-pointer hover:text-white">Example</summary>
+          <pre class="mt-2 text-sm overflow-auto"><code>{`"signals": [{"type": "bullish_divergence", "timeframe": "m5"}], "risk": {"sl_pct": 0.02, "tp_pct": 0.05}`}</code></pre>
+        </details>
+      </div>
+
+      <div class="glass p-6 rounded-xl md:col-span-2">
+        <h2 class="text-xl font-semibold mb-2">Human Context & Audit</h2>
+        <p class="text-slate-300 mb-3">Optional notes and exporter metadata to enhance traceability and LLM explanations.</p>
+        <details class="text-slate-300">
+          <summary class="cursor-pointer hover:text-white">Example</summary>
+          <pre class="mt-2 text-sm overflow-auto"><code>{`"human": {"note": "Watching for retest after breakout."}, "audit": {"version": "v1", "exporter": "LLM_JSON_Export_v6.pine"}`}</code></pre>
+        </details>
+      </div>
+    </div>
+
+    <div class="mt-12">
+      <LiveJsonDemo src="/samples/opusdt.sample.json" />
+    </div>
   </section>
 </BaseLayout>
