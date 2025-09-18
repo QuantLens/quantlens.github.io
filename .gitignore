@@ -11,3 +11,9 @@ dist/
 node_modules/
 .env
 .azure/
+
+# Private/Sensitive Files
+*.pine
+*.py
+private/
+secrets/
