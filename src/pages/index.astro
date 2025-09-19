@@ -1,6 +1,13 @@
+---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import LiveJsonDemo from "../components/LiveJsonDemo.astro";
 import SocialProof from "../components/SocialProof.astro";
+
+const proof = [
+  { name: 'Grok', href: 'https://x.ai', rating: 'Clarity 5/5' },
+  { name: 'DeepSeek', href: 'https://chat.deepseek.com', rating: 'Pending' },
+  { name: 'Gemini', href: 'https://gemini.google.com', quote: 'Standardized schema with explicit labeling and clear categorization makes the payload easy for LLMs to parse.', rating: 'Clarity: Excellent' },
+];
 ---
 
 <BaseLayout title="QuantLens — AI-ready JSON for TradingView" description="Export rich market context from TradingView to your AI stack.">
@@ -24,16 +31,7 @@ import SocialProof from "../components/SocialProof.astro";
   </section>
 
   <!-- Social proof (live links) -->
-  {
-    (() => {
-      const proof = [
-        { name: 'Grok', href: 'https://x.ai', rating: 'Clarity 5/5' },
-        { name: 'DeepSeek', href: 'https://chat.deepseek.com', rating: 'Pending' },
-        { name: 'Gemini', href: 'https://gemini.google.com', quote: 'Standardized schema with explicit labeling and clear categorization makes the payload easy for LLMs to parse.', rating: 'Clarity: Excellent' },
-      ];
-      return <SocialProof items={proof} variant="strip" />;
-    })()
-  }
+  <SocialProof items={proof} variant="strip" />
 
   <!-- How it works -->
   <section class="py-16">
