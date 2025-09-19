@@ -1,10 +1,23 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import LiveJsonDemo from "../components/LiveJsonDemo.astro";
+import SocialProof from "../components/SocialProof.astro";
 ---
 <BaseLayout title="Product — QuantLens" description="What QuantLens exports and how it helps.">
   <section class="container mx-auto px-6 py-16 max-w-5xl">
     <h1 class="text-3xl font-semibold mb-2">Product</h1>
     <p class="text-slate-300 mb-8">Deep-dive into the JSON blocks: horizons, macro, vpLite, signals, risk, and human context.</p>
+
+    <!-- Social proof cards -->
+    {
+      (() => {
+        const proof = [
+          { name: 'Grok', href: 'https://x.ai', rating: 'Clarity 5/5' },
+          { name: 'DeepSeek', href: 'https://chat.deepseek.com', rating: 'Pending' },
+          { name: 'Gemini', href: 'https://gemini.google.com', quote: 'Clear JSON, standardized schema; easy for LLMs to reason about.', rating: 'Excellent' },
+        ];
+        return <SocialProof items={proof} variant="cards" />;
+      })()
+    }
 
     <div class="grid md:grid-cols-2 gap-6">
       <div class="glass p-6 rounded-xl">
