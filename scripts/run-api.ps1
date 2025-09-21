@@ -27,6 +27,13 @@ if (Test-Path $EnvFile) {
 if (-not $env:QL_API_KEYS) { $env:QL_API_KEYS = "dev123" }
 if (-not $env:QL_RPM) { $env:QL_RPM = "120" }
 
+# Inject build metadata if not already set so /version is rich in local dev
+if (-not $env:GIT_SHA) {
+  try { $env:GIT_SHA = (git rev-parse --short HEAD) } catch { $env:GIT_SHA = "dev" }
+}
+if (-not $env:BUILT_AT) { $env:BUILT_AT = (Get-Date -AsUTC -Format o) }
+if (-not $env:QL_VERSION) { $env:QL_VERSION = "0.1.1" }
+
 Write-Host "PYTHONPATH = $($env:PYTHONPATH)"
 Write-Host "Starting Data API on http://localhost:8080 ..."
 uvicorn services.api.data_api:app --reload --port 8080

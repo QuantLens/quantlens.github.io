@@ -25,6 +25,13 @@ if (-not $env:QL_MODEL_PATH) {
   New-Item -ItemType Directory -Force -Path $env:QL_MODEL_PATH | Out-Null
 }
 
+# Inject build metadata if not already present
+if (-not $env:GIT_SHA) {
+  try { $env:GIT_SHA = (git rev-parse --short HEAD) } catch { $env:GIT_SHA = "dev" }
+}
+if (-not $env:BUILT_AT) { $env:BUILT_AT = (Get-Date -AsUTC -Format o) }
+if (-not $env:QL_VERSION) { $env:QL_VERSION = "0.1.1" }
+
 Write-Host "PYTHONPATH = $($env:PYTHONPATH)"
 Write-Host "Starting PTSM on http://localhost:8081 ..."
 uvicorn services.ptsm.app:app --reload --port 8081
