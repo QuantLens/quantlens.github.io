@@ -72,6 +72,5 @@ node_modules/
 
 # Private/Sensitive Files
 *.pine
-*.py
 private/
 secrets/
