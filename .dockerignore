@@ -1,0 +1,15 @@
+.git
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.coverage
+tests/
+tools/python_indicator_clone/tests/
+node_modules
+dist
+build
+.env
+models/*
+!models/ptsm/.gitkeep

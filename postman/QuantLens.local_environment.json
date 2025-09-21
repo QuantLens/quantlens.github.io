@@ -1,0 +1,9 @@
+{
+  "id": "quantlens-local",
+  "name": "QuantLens Local",
+  "values": [
+    {"key": "base_api", "value": "http://127.0.0.1:8080", "enabled": true},
+    {"key": "base_ptsm", "value": "http://127.0.0.1:8081", "enabled": true},
+    {"key": "api_key", "value": "dev123", "enabled": true}
+  ]
+}

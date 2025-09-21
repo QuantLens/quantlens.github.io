@@ -1,0 +1,99 @@
+{
+  "info": {
+    "name": "QuantLens",
+    "_postman_id": "7e5a0d3b-3c7d-4c93-9a7a-quantlens",
+  "description": "QuantLens APIs. Use the x-api-key header for auth (legacy ?key= supported but deprecated). Rate limit headers: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset; on 429 honor Retry-After.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_api", "value": "http://127.0.0.1:8080" },
+    { "key": "base_ptsm", "value": "http://127.0.0.1:8081" },
+    { "key": "api_key", "value": "dev123" }
+  ],
+  "item": [
+    {
+      "name": "API: Health",
+      "request": { "method": "GET", "url": "{{base_api}}/healthz" }
+    },
+    {
+      "name": "API: Version",
+      "request": { "method": "GET", "url": "{{base_api}}/version" }
+    },
+    {
+      "name": "API: Fetch AAPL (1d)",
+      "request": {
+        "method": "GET",
+        "description": "Auth via x-api-key. Shows OHLCV data. Rate limit headers present on success.",
+        "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
+        "url": {
+          "raw": "{{base_api}}/v1/fetch?symbol=AAPL&tf=1d&limit=5",
+          "host": ["{{base_api}}"],
+          "path": ["v1", "fetch"],
+          "query": [
+            { "key": "symbol", "value": "AAPL" },
+            { "key": "tf", "value": "1d" },
+            { "key": "limit", "value": "5" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "API: Fetch BTC/USDT (15m)",
+      "request": {
+        "method": "GET",
+        "description": "Crypto fetch example. Auth via x-api-key. Uniform error schema on failure.",
+        "header": [{ "key": "x-api-key", "value": "{{api_key}}" }],
+        "url": {
+          "raw": "{{base_api}}/v1/fetch?symbol=BTC/USDT&tf=15m&limit=50",
+          "host": ["{{base_api}}"],
+          "path": ["v1", "fetch"],
+          "query": [
+            { "key": "symbol", "value": "BTC/USDT" },
+            { "key": "tf", "value": "15m" },
+            { "key": "limit", "value": "50" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "PTSM: Health",
+      "request": { "method": "GET", "url": "{{base_ptsm}}/healthz" }
+    },
+    {
+      "name": "PTSM: Version",
+      "request": { "method": "GET", "url": "{{base_ptsm}}/version" }
+    },
+    {
+      "name": "PTSM: Infer AAPL (1h)",
+      "request": {
+        "method": "POST",
+        "description": "Model inference. Provide x-api-key header. Errors use {ok:false,code,error} schema.",
+        "header": [
+          { "key": "x-api-key", "value": "{{api_key}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"symbol\": \"AAPL\",\n  \"tf\": \"1h\",\n  \"limit\": 200\n}"
+        },
+        "url": "{{base_ptsm}}/v1/infer"
+      }
+    },
+    {
+      "name": "PTSM: Train AAPL (weekly/full)",
+      "request": {
+        "method": "POST",
+        "description": "Model training kickoff. Auth via x-api-key. Returns job metadata.",
+        "header": [
+          { "key": "x-api-key", "value": "{{api_key}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"symbol\": \"AAPL\",\n  \"tf\": \"1h\",\n  \"lookback_days\": 180\n}"
+        },
+        "url": "{{base_ptsm}}/v1/train"
+      }
+    }
+  ]
+}

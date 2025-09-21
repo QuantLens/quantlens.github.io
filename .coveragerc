@@ -1,0 +1,12 @@
+[run]
+branch = True
+source =
+    ql_indicator
+
+[report]
+omit =
+    ql_indicator/*fundamentals*.py
+    ql_indicator/*sentiment*.py
+    ql_indicator/*derivatives*.py
+    ql_indicator/*multi_exec*.py
+    ql_indicator/*experimental*.py

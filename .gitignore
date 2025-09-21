@@ -1,3 +1,53 @@
+# Runtime & virtual environments
+.venv/
+env/
+
+# Python cache & compiled
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Distribution / metadata
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Coverage & test artifacts
+.coverage
+coverage.xml
+.pytest_cache/
+
+# Local tooling caches
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# Model / large assets (handled externally)
+src/LLM/
+
+# Generated logs / temp
+*.log
+tmp_line.txt
+
+# Tool project egg-info (explicit)
+tools/python_indicator_clone/src/ql_indicator.egg-info/
+tools/python_indicator_clone/src/quantlens.egg-info/
+
+# Node / frontend
+node_modules/
+.astro/
+.vercel/
+.netlify/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
 node_modules
 .DS_Store
 dist

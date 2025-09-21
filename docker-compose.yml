@@ -1,0 +1,26 @@
+version: "3.9"
+services:
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    environment:
+      QL_API_KEYS: ${QL_API_KEYS:-dev123}
+      QL_RPM: ${QL_RPM:-120}
+      POLYGON_API_KEY: ${POLYGON_API_KEY:-}
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  ptsm:
+    build:
+      context: .
+      dockerfile: services/ptsm/Dockerfile
+    environment:
+      QL_API_KEYS: ${QL_API_KEYS:-dev123}
+      QL_MODEL_PATH: /models/ptsm
+    volumes:
+      - ./models/ptsm:/models/ptsm
+    ports:
+      - "8081:8081"
+    restart: unless-stopped

@@ -4,7 +4,11 @@ README & Roadmap
 
 > Build a Pine Script v6 indicator that emits a compact, LLM-friendly JSON report on every bar close, deliver it via TradingView alerts/webhooks, and process it downstream for research, backtesting, and signal generation.
 
----
+## Vision
+
+VisionDefinition: The payload’s vision is to provide a comprehensive, machine-readable dataset for LLM-driven trading decisions, delivering multi-timeframe technical analysis (TA), actionable signals, and market context for FETUSDT on a 5-minute chart (Bitget exchange). It should enable automated trading strategies, support both new and pro traders, and integrate seamlessly with tools like QuantLens™/StratoTrade Labs (per past discussions on TradingView indicator alerts).
+
+
 
 ## 1) Overview & Why
 
@@ -135,6 +139,69 @@ app.post('/hook', express.json({limit:'1mb'}), (req,res)=>{
 /examples/          # Sample payloads, test alerts, dashboards
 /docs/              # README, ROADMAP, schema, prompts
 ```
+
+---
+
+## 10) Indicator Python Module (tools/python_indicator_clone)
+
+This repository includes a lightweight Python package (`ql_indicator`) used for:
+
+* Fetching market data from CCXT, Polygon, or yfinance (with unified fallback routing).
+* Building enriched JSON payloads (macro correlations + technical feature emitter).
+* Deterministic utility functions for resampling and gap detection.
+
+### Key Utilities
+
+* `fetch(symbol, tf, limit, provider=None)` – unified fetch; auto‑routes crypto vs equity.
+* `normalize_tf(tf)` – canonical timeframe normalization (e.g. `15min` → `15m`).
+* `resample_ohlcv(df, rule, drop_incomplete_tail=False)` – left‑closed, label‑left resample
+  * Set `drop_incomplete_tail=True` to remove a partially formed final bar (useful for strict backtests).
+* `detect_gaps(df, freq)` – returns list of missing timestamps.
+
+### Deterministic Tests
+
+Core tests live under `tools/python_indicator_clone/tests`:
+
+| Test File | Purpose |
+|-----------|---------|
+| `test_resample_math.py` | Validates left‑closed OHLCV aggregation semantics |
+| `test_resample_tail_option.py` | Verifies optional tail trimming behavior |
+| `test_gap_detector.py` | Ensures gap detection returns expected missing bars |
+| `test_fallback_polygon.py` | Confirms yfinance empty result triggers polygon fallback |
+| `test_fallback_equity_router.py` | Confirms routing: `_safe_yf` then polygon when empty |
+| `test_ccxt_stub.py` | Stubbed CCXT fetch path schema correctness |
+| `test_fetch_yf.py` | Deterministic offline yfinance pathway (monkeypatched) |
+
+### Network vs Deterministic
+
+Tests marked with `@pytest.mark.network` are optional in CI and run only on lanes that keep the respective dependency (e.g. CCXT). Deterministic tests avoid live calls via monkeypatching to maintain reproducibility.
+
+### CI Workflow
+
+GitHub Actions workflow `indicator-tests.yml` runs:
+
+1. Deterministic core tests on all matrix combos (Python 3.11 & 3.12, with/without CCXT).
+2. Network tests only when `ccxt` is present.
+3. Coverage (non-failing) artifact upload.
+
+Add a coverage gate later by editing the workflow step:
+
+```yaml
+      - name: Coverage (fail under threshold)
+        run: pytest --cov=ql_indicator --cov-report=term-missing --cov-fail-under=85
+```
+
+### Resample Semantics
+
+* Bars are aggregated using left‑closed, label‑left windows; timestamp represents the bar start.
+* Partial tail bar is kept by default for forward‑looking analytics; pass `drop_incomplete_tail=True` for strict backtests.
+* Volume sums; high/low/last close semantics follow TradingView convention.
+
+### Retry & Robustness
+
+* yfinance fetch path wrapped in a Tenacity retry (`_safe_yf`) with exponential backoff.
+* Fallback order for equities: yfinance → polygon.
+* Macro correlations (optional) cached with TTL (`QL_MACRO_TTL_SEC`).
 
 ---
 
@@ -281,3 +348,149 @@ Choose a permissive license (e.g., MIT/Apache-2.0) and include it in `/LICENSE`.
 Ready to publish the marketing site? See `DEPLOYMENT.md` for step‑by‑step guides to GitHub Pages, Netlify, Vercel, and Cloudflare Pages. You can use a free subdomain now and attach a custom domain later.
 
 Org note: If you host under the QuantLens GitHub organization (<https://github.com/QuantLens>), your project Pages URL will look like `https://QuantLens.github.io/<repo>/`. For an organization root site, use a repo named `QuantLens.github.io`.
+
+## Quick Start (Services)
+
+### Local (no Docker)
+
+```bash
+# PowerShell
+set QL_API_KEYS=dev123
+uvicorn services.api.data_api:app --reload --port 8080
+uvicorn services.ptsm.app:app --reload --port 8081
+```
+
+### Docker Compose
+
+```bash
+docker compose up --build -d
+# Tail logs
+docker compose logs -f api
+```
+
+Both services:
+
+* Data API: <http://localhost:8080>
+* PTSM API: <http://localhost:8081>
+
+### Environment Variables
+
+| Var | Purpose | Example |
+|-----|---------|---------|
+| QL_API_KEYS | Comma-separated API keys (simple static auth) | dev123,pro456 |
+| QL_RPM | Per-key requests per minute window | 120 |
+| POLYGON_API_KEY | Polygon.io key (optional, enables equity fallback) | (your key) |
+| QL_MODEL_PATH | (PTSM) path for persisted models | /models/ptsm |
+
+Copy `.env` and adjust for production.
+
+## API Examples
+
+Fetch bars (crypto auto-routes via CCXT stubbed/real):
+
+```bash
+curl "http://localhost:8080/v1/fetch?symbol=BTC/USDT&tf=15m&limit=100&key=dev123"
+```
+
+Fetch equity (yfinance→polygon fallback):
+
+```bash
+curl "http://localhost:8080/v1/fetch?symbol=AAPL&tf=5m&limit=120&key=dev123"
+```
+
+Infer with (placeholder) PTSM model:
+
+```bash
+curl -X POST "http://localhost:8081/v1/infer?key=dev123" \
+  -H "Content-Type: application/json" \
+  -d '{"symbol":"AAPL","tf":"1h","limit":200}'
+```
+
+## Pricing & Auth (Fast Path)
+
+| Tier | RPM (QL_RPM) | Daily Cap | Notes |
+|------|--------------|-----------|-------|
+| Dev (Free) | 60 | 10k | Shared infra, basic SLAs |
+| Pro | 120 | 250k | Higher burst & fallback priority |
+| Enterprise | custom | custom | Dedicated containers / VLAN |
+
+Implementation today: static key list in env. Upgrade path:
+
+1. Move keys → SQLite table (key, plan, rpm, daily_cap, created_at, last_used_at).
+2. Introduce rotating prefix keys and revocation list.
+3. Stripe webhook populates/updates subscription → plan → env or DB row.
+
+## CI & Coverage
+
+Workflow `.github/workflows/ci.yml` runs matrix (OS × Python) with ruff, mypy (non-blocking), and targeted coverage gate (>=50). Raise `--cov-fail-under` gradually (e.g., +10% weekly) until 85–90% for core deterministic modules.
+
+## Operational Next Steps
+
+Planned hardening (next sprint):
+
+* /metrics (Prometheus) with counters: fetch_success_total, fallback_total, rate_limit_hits_total.
+* Stripe billing + DB-backed API keys (SQLite→Postgres migration path).
+* Coverage ratchet: 50 → 60 → 70 → 80+.
+* Qwen-3 Orchestrator (external) selects (symbol, tf, features) then POST /v1/train.
+
+Future optional:
+
+* Structured logging (JSON) + log retention policy.
+* Canary lane for new provider integrations.
+* Circuit breaker around external market data providers.
+
+## Docker Images
+
+Build manually:
+
+```bash
+docker build -t ql-api -f services/api/Dockerfile .
+docker build -t ql-ptsm -f services/ptsm/Dockerfile .
+```
+
+Run:
+
+```bash
+docker run --rm -p 8080:8080 -e QL_API_KEYS=dev123 ql-api
+```
+
+## Qwen Orchestrator Hook
+
+Place orchestrator code under `src/LLM/` (outside service containers) to decide fetch/training configs. Optionally self-host a quant LLM; warm it at PTSM startup for lower latency if memory budget allows.
+
+### Service Endpoints
+
+| Endpoint | Service | Purpose |
+|----------|---------|---------|
+| `/healthz` | both | Liveness probe (always `{ok:true}` if process healthy) |
+| `/version` | both | Returns `{version: <QL_VERSION or app.version>}` |
+| `/metrics` | both | Prometheus counters (plain text) |
+| `/v1/fetch` | Data API | Fetch OHLCV bars (strict fail-fast) |
+| `/v1/infer` | PTSM | Run model inference (stub) |
+| `/v1/train` | PTSM | Trigger training stub |
+
+### Metrics (excerpt)
+
+```text
+# HELP fetch_success_total fetch success total
+# TYPE fetch_success_total counter
+fetch_success_total 10
+# HELP fetch_error_total fetch error total
+# TYPE fetch_error_total counter
+fetch_error_total 0
+```
+
+### Errors & Rate Limits
+
+| Code | Meaning | Typical Cause | Action |
+|------|---------|---------------|--------|
+| 400 | Bad Request | Missing/invalid params | Fix query/body |
+| 401 | Invalid API key | Key absent or not in `QL_API_KEYS` | Provide correct key |
+| 429 | Rate limited | Exceeded `QL_RPM` in 60s window | Backoff / upgrade plan |
+| 500 | Internal error | Provider failure or uncaught edge | Retry (exponential) |
+
+`QL_RPM` is enforced per key in-memory; for multi-instance deploys use a shared store (Redis) with a sliding window or token bucket.
+
+### Versioning
+
+Set `QL_VERSION` in `.env` (e.g., `QL_VERSION=0.1.0`) to have `/version` reflect release tags. Bump alongside schema-impacting changes.

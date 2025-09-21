@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quantlens"
+version = "0.1.0"
+description = "QuantLens data layer and services"
+requires-python = ">=3.10"
+
+[project.scripts]
+quantlens-api = "ql_indicator.cli:run_api"
+quantlens-ptsm = "ql_indicator.cli:run_ptsm"
+
+[tool.setuptools]
+packages = ["ql_indicator"]
+package-dir = {"" = "tools/python_indicator_clone/src"}
